@@ -1,4 +1,14 @@
 #include "headers/utils.h"
+#include <pthread.h>
+
+// Structure pour passer les arguments aux threads
+typedef struct {
+	SizeT bits;
+	CustomInteger result;
+	bool found;
+	pthread_mutex_t* mutex;
+} ThreadArgs;
+
 
 Word modWord(CustomInteger a, Word b) {
 	if (b == 0) return 0;
@@ -10,6 +20,82 @@ Word modWord(CustomInteger a, Word b) {
 	}
 
 	return (Word)remainder;
+}
+
+bool isQuickCriblePassed(CustomInteger candidate) {
+	Word smallPrimes[] = {
+		3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 
+		59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 
+		113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 
+		179, 181, 191, 193, 197, 199, 211, 223, 227, 229, 233, 
+		239, 241, 251
+	};
+	int numSmallPrimes = sizeof(smallPrimes) / sizeof(smallPrimes[0]);
+
+	for (int i = 0; i < numSmallPrimes; i++) {
+		// modWord est l'optimisation que nous avons vue pour éviter Knuth ici
+		Word remainder = modWord(candidate, smallPrimes[i]); 
+		if (remainder == 0) {
+			// Si le candidat est le nombre premier lui-même (ex: 8 bits)
+			if (candidate.size == 1 && candidate.value[0] == smallPrimes[i]) {
+				return true;
+			}
+			return false;
+		}
+	}
+	return true;
+}
+
+void* primeWorker(void* vargs) {
+	ThreadArgs* args = (ThreadArgs*)vargs;
+
+	while (1) {
+		// 1. Vérifier si un autre thread a déjà trouvé
+		pthread_mutex_lock(args->mutex);
+		if (args->found) {
+			pthread_mutex_unlock(args->mutex);
+			return NULL;
+		}
+		pthread_mutex_unlock(args->mutex);
+
+		// 2. Tenter une génération (Crible + Miller-Rabin)
+		CustomInteger candidate = generateRandomInt(args->bits);
+
+		// (Applique ici ton petit crible et ton isProbablyPrime)
+		if (isQuickCriblePassed(candidate) && isProbablyPrime(candidate, 5)) {
+			pthread_mutex_lock(args->mutex);
+			if (!args->found) {
+				args->result = candidate; // On ne copie pas, on transfert le pointeur
+				args->found = true;
+			} else {
+				freeInteger(&candidate);
+			}
+			pthread_mutex_unlock(args->mutex);
+			return NULL;
+		}
+		
+		freeInteger(&candidate);
+	}
+}
+
+CustomInteger generatePrimeParallel(SizeT bits, int numThreads) {
+	pthread_t threads[numThreads];
+	ThreadArgs args;
+	pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
+	args.bits = bits;
+	args.found = false;
+	args.mutex = &mutex;
+
+	for (int i = 0; i < numThreads; i++) {
+		pthread_create(&threads[i], NULL, primeWorker, &args);
+	}
+
+	for (int i = 0; i < numThreads; i++) {
+		pthread_join(threads[i], NULL);
+	}
+
+	return args.result;
 }
 
 // Calcule l'inverse modulaire d'un nombre impair modulo 2^32
