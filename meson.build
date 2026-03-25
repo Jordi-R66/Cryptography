@@ -20,18 +20,8 @@ optim_flags = [
 	'-fomit-frame-pointer'	# Libère un registre supplémentaire
 ]
 
-other_flags = [
-	'-s'
-]
-
 # On s'assure que le compilateur accepte chaque flag avant de l'ajouter
 foreach arg : optim_flags
-	if cc.has_argument(arg)
-		add_project_arguments(arg, language: 'c')
-	endif
-endforeach
-
-foreach arg : other_flags
 	if cc.has_argument(arg)
 		add_project_arguments(arg, language: 'c')
 	endif
@@ -46,7 +36,7 @@ subdir('libs')
 
 # 2. Définition des sources de l'application
 app_sources = files(
-
+	'src/main.c'
 )
 
 app_inc = include_directories('src/headers')
@@ -56,5 +46,9 @@ executable('crypto_app',
 	app_sources,
 	include_directories: app_inc,
 	dependencies: my_own_c_lib_dep, # Liaison avec la lib compilée dans subdir('libs')
+	link_args: [
+		'-s',
+		'--static'
+	],
 	install: true
 )
