@@ -36,7 +36,8 @@ subdir('libs')
 
 # 2. Définition des sources de l'application
 app_sources = files(
-	'src/main.c'
+	'src/main.c',
+	'src/utils.c'
 )
 
 app_inc = include_directories('src/headers')
