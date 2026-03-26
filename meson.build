@@ -40,7 +40,9 @@ app_sources = files(
 	'src/utils.c'
 )
 
-app_inc = include_directories('src/headers')
+app_inc = include_directories(
+	'src/common_headers'
+)
 
 # 3. Compilation de l'exécutable
 executable('crypto_app',

@@ -1,4 +1,4 @@
-#include "headers/utils.h"
+#include "common_headers/utils.h"
 #include <pthread.h>
 
 // Structure pour passer les arguments aux threads
