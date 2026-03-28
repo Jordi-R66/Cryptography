@@ -247,6 +247,24 @@ CustomInteger modPowMontgomery(CustomInteger base, CustomInteger exp, CustomInte
 	return finalOutput;
 }
 
+/**
+ * @brief Generates a random integer between [0; limit[
+ * 
+ * @param limit 
+ * @return CustomInteger 
+ */
+CustomInteger generateRandomCappedNumber(CustomInteger limit) {
+	CustomInteger result = { 0 };
+
+	CustomInteger temp = generateRandomInt(getIntegerBitLength(limit));
+
+	result = modInteger(temp, limit);
+
+	freeInteger(&temp);
+
+	return result;
+}
+
 CustomInteger generateRandomBase(CustomInteger n) {
 	CustomInteger One = allocIntegerFromValue(1, false, true);
 	CustomInteger Two = allocIntegerFromValue(2, false, true);
