@@ -33,7 +33,7 @@ SRCS = $(APP_SRCS) $(EL_GAMAL_SRCS) $(LIB_SRCS)
 OBJS = $(SRCS:.c=.o)
 
 # Nom de l'exécutable final
-TARGET = crypto_app
+TARGET = crypto_app.out
 
 # ==========================================
 # Règles de compilation
