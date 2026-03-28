@@ -7,8 +7,7 @@ typedef struct {
 	CustomInteger result;
 	bool found;
 	pthread_mutex_t* mutex;
-} ThreadArgs;
-
+} PrimeGenThreadArgs;
 
 Word modWord(CustomInteger a, Word b) {
 	if (b == 0) return 0;
@@ -76,7 +75,7 @@ bool isQuickCriblePassed(CustomInteger candidate) {
 }
 
 void* primeWorker(void* vargs) {
-	ThreadArgs* args = (ThreadArgs*)vargs;
+	PrimeGenThreadArgs* args = (PrimeGenThreadArgs*)vargs;
 
 	while (1) {
 		// 1. Vérifier si un autre thread a déjà trouvé
@@ -102,14 +101,14 @@ void* primeWorker(void* vargs) {
 			pthread_mutex_unlock(args->mutex);
 			return NULL;
 		}
-		
+
 		freeInteger(&candidate);
 	}
 }
 
 CustomInteger generatePrimeParallel(SizeT bits, int numThreads) {
 	pthread_t threads[numThreads];
-	ThreadArgs args;
+	PrimeGenThreadArgs args;
 	pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 	args.bits = bits;
