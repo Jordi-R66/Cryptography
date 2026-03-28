@@ -22,6 +22,35 @@ Word modWord(CustomInteger a, Word b) {
 	return (Word)remainder;
 }
 
+CustomInteger generateRandomInvertible(CustomInteger n) {
+	CustomInteger One = allocIntegerFromValue(1, false, true);
+	CustomInteger candidate;
+
+	SizeT nBits = getIntegerBitLength(n);
+
+	while (1) {
+		candidate = generateRandomInt(nBits);
+
+		if (isZero(candidate) || compareIntegers(candidate, n) != LESS) {
+			freeInteger(&candidate);
+			continue;
+		}
+
+		CustomInteger gcd = steinGcdInteger(candidate, n);
+
+		if (equalsInteger(gcd, One)) {
+			freeInteger(&gcd);
+			break; 
+		}
+
+		freeInteger(&gcd);
+		freeInteger(&candidate);
+	}
+
+	freeInteger(&One);
+	return candidate;
+}
+
 bool isQuickCriblePassed(CustomInteger candidate) {
 	Word smallPrimes[] = {
 		3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 

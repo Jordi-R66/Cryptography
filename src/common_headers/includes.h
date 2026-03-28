@@ -4,4 +4,5 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "bools/bool.h"
 #include "variableSizeInt/customInteger.h"
