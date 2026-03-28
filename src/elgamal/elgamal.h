@@ -6,17 +6,21 @@
 #pragma pack()
 
 typedef struct {
-	CustomInteger x;
+	CustomInteger x, barrettMu_p;
 } EGPrivateKey;
 
 typedef struct {
-	CustomInteger p, a, q, h;
+	CustomInteger p, a, q, h, barrettMu_p;
 } EGPublicKey;
 
 typedef struct {
 	EGPrivateKey priv;
 	EGPublicKey pub;
 } EGKeyPair;
+
+typedef struct {
+	CustomInteger tempKey, c;
+} EGCiphered;
 
 #define EG_PUBLIC_KEY_SIZE sizeof(EGPublicKey);
 #define EG_PRIVATE_KEY_SIZE sizeof(EGPrivateKey);
@@ -25,6 +29,9 @@ typedef struct {
 #pragma pack(1)
 
 EGKeyPair generateEGKeyPair(SizeT bits);
+
+EGCiphered cipherData(CustomInteger data, EGPublicKey pub);
+CustomInteger decipherData(EGCiphered ciphered, EGKeyPair keyPair);
 
 void freeEGPublicKey(EGPublicKey* pub);
 void freeEGPrivateKey(EGPrivateKey* priv);
