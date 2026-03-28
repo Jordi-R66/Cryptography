@@ -10,7 +10,7 @@ typedef struct {
 } EGPrivateKey;
 
 typedef struct {
-	CustomInteger p, q, a, h;
+	CustomInteger p, a, q, h;
 } EGPublicKey;
 
 typedef struct {
@@ -25,3 +25,11 @@ typedef struct {
 #pragma pack(1)
 
 EGKeyPair generateEGKeyPair(SizeT bits);
+
+void freeEGPublicKey(EGPublicKey* pub);
+void freeEGPrivateKey(EGPrivateKey* priv);
+void freeEGKeyPair(EGKeyPair* pair);
+
+void printEGPublicKey(EGPublicKey* pub, Base base);
+void printEGPrivateKey(EGPrivateKey* priv, Base base);
+void printEGKeyPair(EGKeyPair* pair, Base base);

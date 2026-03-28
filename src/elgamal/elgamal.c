@@ -45,3 +45,42 @@ EGKeyPair generateEGKeyPair(SizeT bits) {
 
 	return output;
 }
+
+void freeEGPublicKey(EGPublicKey* pub) {
+	freeInteger(&pub->p);
+	freeInteger(&pub->a);
+	freeInteger(&pub->q);
+	freeInteger(&pub->h);
+}
+
+void freeEGPrivateKey(EGPrivateKey* priv) {
+	freeInteger(&priv->x);
+}
+
+void freeEGKeyPair(EGKeyPair* pair) {
+	freeEGPublicKey(&pair->pub);
+	freeEGPrivateKey(&pair->priv);
+}
+
+void printEGPublicKey(EGPublicKey* pub, Base base) {
+	printf(" === ELGAMAL PUBLIC KEY === \n");
+	printf("p = ");
+	printInteger(pub->p, base, false);
+	printf("a = ");
+	printInteger(pub->a, base, false);
+	printf("q = ");
+	printInteger(pub->q, base, false);
+	printf("h = ");
+	printInteger(pub->h, base, false);
+}
+
+void printEGPrivateKey(EGPrivateKey* priv, Base base) {
+	printf(" === ELGAMAL PRIVATE KEY === \n");
+	printf("x = ");
+	printInteger(priv->x, base, false);
+}
+
+void printEGKeyPair(EGKeyPair* pair, Base base) {
+	printEGPublicKey(&pair->pub, base);
+	printEGPrivateKey(&pair->priv, base);
+}
