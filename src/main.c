@@ -7,9 +7,9 @@ int main(void) {
 	time_t start, stop;
 
 	start = time(NULL);
-	p = generatePrimeParallel(24, 12);
+	p = generatePrimeParallel(4096, 6);
 	//q = generatePrimeParallel(2048, 12);
-	stop  = time(NULL);
+	stop = time(NULL);
 	n = generateRandomInvertible(p);
 	reallocToFitInteger(&n);
 
