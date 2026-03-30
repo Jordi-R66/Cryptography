@@ -1,5 +1,6 @@
 #include "common_headers/utils.h"
 #include <pthread.h>
+#include <sys/random.h>
 
 // Structure pour passer les arguments aux threads
 typedef struct {
@@ -59,12 +60,18 @@ CustomInteger generateRandomInvertible(CustomInteger n) {
 }
 
 bool isQuickCriblePassed(CustomInteger candidate) {
-	Word smallPrimes[] = {
-		3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 
-		59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 
-		113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 
-		179, 181, 191, 193, 197, 199, 211, 223, 227, 229, 233, 
-		239, 241, 251
+	static const Word smallPrimes[] = {
+		3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 
+		79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 
+		163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229, 233, 239, 
+		241, 251, 257, 263, 269, 271, 277, 281, 283, 293, 307, 311, 313, 317, 331, 
+		337, 347, 349, 353, 359, 367, 373, 379, 383, 389, 397, 401, 409, 419, 421, 
+		431, 433, 439, 443, 449, 457, 461, 463, 467, 479, 487, 491, 499, 503, 509, 
+		521, 523, 541, 547, 557, 563, 569, 571, 577, 587, 593, 599, 601, 607, 613, 
+		617, 619, 631, 641, 643, 647, 653, 659, 661, 673, 677, 683, 691, 701, 709, 
+		719, 727, 733, 739, 743, 751, 757, 761, 769, 773, 787, 797, 809, 811, 821, 
+		823, 827, 829, 839, 853, 857, 859, 863, 877, 881, 883, 887, 907, 911, 919, 
+		929, 937, 941, 947, 953, 967, 971, 977, 983, 991, 997
 	};
 	int numSmallPrimes = sizeof(smallPrimes) / sizeof(smallPrimes[0]);
 
@@ -89,57 +96,67 @@ void* safePrimeWorker(void* vargs) {
 	CustomInteger Two = allocIntegerFromValue(2, false, true);
 
 	while (1) {
-		pthread_mutex_lock(args->mutex);
-		if (args->found) {
+		CustomInteger q = generateRandomInt(args->bits);
+		int retry_count = 0;
+
+		while (retry_count < 20000) {
+			pthread_mutex_lock(args->mutex);
+
+			if (args->found) {
+				pthread_mutex_unlock(args->mutex);
+				freeInteger(&q);
+				freeInteger(&One); freeInteger(&Two);
+				return NULL;
+			}
 			pthread_mutex_unlock(args->mutex);
+
+			if (!isQuickCriblePassed(q)) {
+				goto next_candidate;
+			}
+
+			// Calcul de p = 2q + 1
+			CustomInteger temp = multiplyKaratsuba(Two, q);
+			CustomInteger p = addInteger(temp, One);
+			freeInteger(&temp);
+
+			if (!isQuickCriblePassed(p)) {
+				freeInteger(&p);
+				goto next_candidate;
+			}
+
+			if (!isProbablyPrime(q, 5)) {
+				freeInteger(&p);
+				goto next_candidate;
+			}
+
+			if (!isProbablyPrime(p, 5)) {
+				freeInteger(&p);
+				goto next_candidate;
+			}
+
+			// --- SUCCÈS ---
+			pthread_mutex_lock(args->mutex);
+			if (!args->found) {
+				args->result_q = q;
+				args->result_p = p;
+				args->found = true;
+			} else {
+				freeInteger(&q);
+				freeInteger(&p);
+			}
+			pthread_mutex_unlock(args->mutex);
+
 			freeInteger(&One); freeInteger(&Two);
 			return NULL;
-		}
-		pthread_mutex_unlock(args->mutex);
 
-		CustomInteger q = generateRandomInt(args->bits);
-
-		if (!isQuickCriblePassed(q)) {
+		next_candidate:
+			retry_count++;
+			CustomInteger next_q = addInteger(q, Two);
 			freeInteger(&q);
-			continue;
+			q = next_q;
 		}
 
-		// 4. Calcul de p = 2q + 1
-		CustomInteger temp = multiplyInteger(Two, q);
-		CustomInteger p = addInteger(temp, One);
-		freeInteger(&temp);
-
-		if (!isQuickCriblePassed(p)) {
-			freeInteger(&q);
-			freeInteger(&p);
-			continue;
-		}
-
-		if (!isProbablyPrime(q, 5)) {
-			freeInteger(&q);
-			freeInteger(&p);
-			continue;
-		}
-
-		if (!isProbablyPrime(p, 5)) {
-			freeInteger(&q);
-			freeInteger(&p);
-			continue;
-		}
-
-		pthread_mutex_lock(args->mutex);
-		if (!args->found) {
-			args->result_q = q;
-			args->result_p = p;
-			args->found = true;
-		} else {
-			freeInteger(&q);
-			freeInteger(&p);
-		}
-		pthread_mutex_unlock(args->mutex);
-
-		freeInteger(&One); freeInteger(&Two);
-		return NULL;
+		freeInteger(&q); // Au bout de 20 000 échecs, on relance un tirage complet
 	}
 }
 
@@ -176,24 +193,24 @@ void* primeWorker(void* vargs) {
 }
 
 void generateSafePrimeParallel(SizeT bits, int numThreads, CustomIntegerPtr out_q, CustomIntegerPtr out_p) {
-    pthread_t threads[numThreads];
-    SafePrimeGenArgs args;
-    pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+	pthread_t threads[numThreads];
+	SafePrimeGenArgs args;
+	pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-    args.bits = bits;
-    args.found = false;
-    args.mutex = &mutex;
+	args.bits = bits;
+	args.found = false;
+	args.mutex = &mutex;
 
-    for (int i = 0; i < numThreads; i++) {
-        pthread_create(&threads[i], NULL, safePrimeWorker, &args);
-    }
+	for (int i = 0; i < numThreads; i++) {
+		pthread_create(&threads[i], NULL, safePrimeWorker, &args);
+	}
 
-    for (int i = 0; i < numThreads; i++) {
-        pthread_join(threads[i], NULL);
-    }
+	for (int i = 0; i < numThreads; i++) {
+		pthread_join(threads[i], NULL);
+	}
 
-    *out_q = args.result_q;
-    *out_p = args.result_p;
+	*out_q = args.result_q;
+	*out_p = args.result_p;
 }
 
 CustomInteger generatePrimeParallel(SizeT bits, int numThreads) {
@@ -293,49 +310,80 @@ CustomInteger modPowMontgomery(CustomInteger base, CustomInteger exp, CustomInte
 	CustomInteger R2_mod = modInteger(R2, mod);
 	freeInteger(&R2);
 
-	CustomInteger base_prod = multiplyInteger(base, R2_mod);
+	CustomInteger base_prod = multiplyKaratsuba(base, R2_mod);
 	CustomInteger base_mont = montgomeryReduce(base_prod, mod, m_prime);
 	freeInteger(&base_prod);
-
-	CustomInteger One = allocIntegerFromValue(1, false, true);
-	CustomInteger res_prod = multiplyInteger(One, R2_mod);
-	CustomInteger result_mont = montgomeryReduce(res_prod, mod, m_prime);
-	freeInteger(&res_prod);
-	freeInteger(&R2_mod);
 
 	SizeT maxBits = 0;
 	if (exp.size > 0) {
 		SizeT msWordIdx = exp.size;
-		while (msWordIdx > 0 && exp.value[msWordIdx - 1] == 0) {
-			msWordIdx--;
-		}
+		while (msWordIdx > 0 && exp.value[msWordIdx - 1] == 0) msWordIdx--;
 
 		if (msWordIdx > 0) {
 			Word topWord = exp.value[msWordIdx - 1];
 			int msBit = 31;
-			while (msBit >= 0 && !((topWord >> msBit) & 1)) {
-				msBit--;
-			}
-
+			while (msBit >= 0 && !((topWord >> msBit) & 1)) msBit--;
 			maxBits = (msWordIdx - 1) * 32 + msBit + 1;
 		}
 	}
 
-	for (SizeT i = 0; i < maxBits; i++) {
-		if (getBit(exp, i) == 1) {
-			CustomInteger prod = multiplyInteger(result_mont, base_mont);
-			CustomInteger newRes = montgomeryReduce(prod, mod, m_prime);
-			freeInteger(&prod);
-			freeInteger(&result_mont);
-			result_mont = newRes;
-		}
+	#define MONT_WINDOW_SIZE 5
+	#define MONT_TABLE_SIZE (1 << (MONT_WINDOW_SIZE - 1)) // 16 valeurs
 
-		if (i < maxBits - 1) {
-			CustomInteger sq = multiplyInteger(base_mont, base_mont);
-			CustomInteger newBase = montgomeryReduce(sq, mod, m_prime);
+	CustomInteger precomputed[MONT_TABLE_SIZE];
+	precomputed[0] = copyIntegerToNew(base_mont);
+
+	CustomInteger sq_prod = multiplyKaratsuba(base_mont, base_mont);
+	CustomInteger base2 = montgomeryReduce(sq_prod, mod, m_prime);
+	freeInteger(&sq_prod);
+
+	for (int k = 1; k < MONT_TABLE_SIZE; k++) {
+		CustomInteger prod = multiplyKaratsuba(precomputed[k - 1], base2);
+		precomputed[k] = montgomeryReduce(prod, mod, m_prime);
+		freeInteger(&prod);
+	}
+	freeInteger(&base2);
+
+	CustomInteger One = allocIntegerFromValue(1, false, true);
+	CustomInteger res_prod = multiplyKaratsuba(One, R2_mod);
+	CustomInteger result_mont = montgomeryReduce(res_prod, mod, m_prime);
+	freeInteger(&res_prod);
+	freeInteger(&R2_mod);
+
+	SizeT i = maxBits;
+
+	while (i > 0) {
+		if (getBit(exp, i - 1) == 0) {
+			CustomInteger sq = multiplyKaratsuba(result_mont, result_mont);
+			CustomInteger newRes = montgomeryReduce(sq, mod, m_prime);
+			freeInteger(&result_mont);
 			freeInteger(&sq);
-			freeInteger(&base_mont);
-			base_mont = newBase;
+			result_mont = newRes;
+			i--;
+		} else {
+			SizeT j = (i > MONT_WINDOW_SIZE) ? i - MONT_WINDOW_SIZE : 0;
+			while (getBit(exp, j) == 0) j++;
+
+			Word windowVal = 0;
+			for (SizeT k = i; k > j; k--) {
+				windowVal = (windowVal << 1) | getBit(exp, k - 1);
+			}
+
+			for (SizeT k = i; k > j; k--) {
+				CustomInteger sq = multiplyKaratsuba(result_mont, result_mont);
+				CustomInteger newRes = montgomeryReduce(sq, mod, m_prime);
+				freeInteger(&result_mont);
+				freeInteger(&sq);
+				result_mont = newRes;
+			}
+
+			CustomInteger prod = multiplyKaratsuba(result_mont, precomputed[windowVal / 2]);
+			CustomInteger newRes = montgomeryReduce(prod, mod, m_prime);
+			freeInteger(&result_mont);
+			freeInteger(&prod);
+			result_mont = newRes;
+
+			i = j;
 		}
 	}
 
@@ -344,6 +392,9 @@ CustomInteger modPowMontgomery(CustomInteger base, CustomInteger exp, CustomInte
 	freeInteger(&One);
 	freeInteger(&base_mont);
 	freeInteger(&result_mont);
+	for (int k = 0; k < MONT_TABLE_SIZE; k++) {
+		freeInteger(&precomputed[k]);
+	}
 
 	return finalOutput;
 }
@@ -371,50 +422,41 @@ CustomInteger generateRandomBase(CustomInteger n) {
 	CustomInteger Two = allocIntegerFromValue(2, false, true);
 	CustomInteger n_minus_two = subtractInteger(n, Two);
 
-	// On alloue 'a' à la même taille que 'n'
 	CustomInteger a = allocInteger(n.size);
 	a.size = n.size;
 
-	FILE* urandom = fopen("/dev/urandom", "r");
-	if (!urandom) {
-		fprintf(stderr, "Erreur lecture /dev/urandom\n");
-		exit(EXIT_FAILURE);
-	}
-
 	while (1) {
-		// On remplit 'a' avec de l'aléatoire pur
-		fread(a.value, sizeof(Word), n.size, urandom);
+		ssize_t bytes_read = getrandom(a.value, n.size * sizeof(Word), 0);
+		
+		if (bytes_read < 0) {
+			fprintf(stderr, "Erreur fatale : getrandom() a échoué\n");
+			exit(EXIT_FAILURE);
+		}
 
-		// --- AJOUT : Masquage pour éviter le rejet infini ---
 		Word topWordN = n.value[n.size - 1];
 		int msBit = 31;
 		while (msBit >= 0 && !((topWordN >> msBit) & 1)) {
 			msBit--;
 		}
 
-		// Si le mot de poids fort n'utilise pas ses 32 bits, on masque a
 		if (msBit < 31) {
 			Word mask = (1U << (msBit + 1)) - 1;
 			a.value[n.size - 1] &= mask;
 		}
-		// ----------------------------------------------------
 
-		// Simule un reallocToFit local
 		SizeT tempSize = n.size;
 		while (tempSize > 1 && a.value[tempSize - 1] == 0) {
 			tempSize--;
 		}
 		a.size = tempSize;
 
-		// On vérifie : 2 <= a <= n-2
 		if (greaterThanInteger(a, One) && (lessThanInteger(a, n_minus_two) || equalsInteger(a, n_minus_two))) {
-			break; // C'est gagné !
+			break;
 		}
 
 		a.size = n.size;
 	}
 
-	fclose(urandom);
 	freeInteger(&One);
 	freeInteger(&Two);
 	freeInteger(&n_minus_two);
@@ -429,16 +471,13 @@ CustomInteger generateRandomInt(SizeT bits) {
 
 	result.size = nbWords;
 
-	FILE* urandom = fopen("/dev/urandom", "r");
+	ssize_t bytes_read = getrandom(result.value, nbWords * sizeof(Word), 0);
 
-	if (!urandom) {
+	if (bytes_read < 0) {
 		freeInteger(&result);
-		fprintf(stderr, "Couldn't open /dev/urandom\n");
+		fprintf(stderr, "Fatal Error : getrandom() failed to provide a random number\n");
 		exit(EXIT_FAILURE);
 	}
-
-	fread(result.value, sizeof(Word), nbWords, urandom);
-	fclose(urandom);
 
 	SizeT extraBits = (nbWords << 5) - bits;
 	if (extraBits > 0) {
