@@ -3,9 +3,12 @@
 #include <time.h>
 
 int main(void) {
-	EGKeyPair pair = generateEGKeyPair(512);
+	time_t start, end;
+	start = time(NULL);
+	EGKeyPair pair = generateEGKeyPair(2048);
+	end = time(NULL);
 
-	printf("HULLO\n");
+	printf("HULLO (Key pair generated in %ld seconds)\n", end - start);
 
 	printEGKeyPair(&pair, HEX);
 

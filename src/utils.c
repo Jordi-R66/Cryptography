@@ -9,6 +9,14 @@ typedef struct {
 	pthread_mutex_t* mutex;
 } PrimeGenThreadArgs;
 
+typedef struct {
+	SizeT bits;
+	CustomInteger result_q;
+	CustomInteger result_p;
+	bool found;
+	pthread_mutex_t* mutex;
+} SafePrimeGenArgs;
+
 Word modWord(CustomInteger a, Word b) {
 	if (b == 0) return 0;
 
@@ -74,6 +82,67 @@ bool isQuickCriblePassed(CustomInteger candidate) {
 	return true;
 }
 
+void* safePrimeWorker(void* vargs) {
+	SafePrimeGenArgs* args = (SafePrimeGenArgs*)vargs;
+
+	CustomInteger One = allocIntegerFromValue(1, false, true);
+	CustomInteger Two = allocIntegerFromValue(2, false, true);
+
+	while (1) {
+		pthread_mutex_lock(args->mutex);
+		if (args->found) {
+			pthread_mutex_unlock(args->mutex);
+			freeInteger(&One); freeInteger(&Two);
+			return NULL;
+		}
+		pthread_mutex_unlock(args->mutex);
+
+		CustomInteger q = generateRandomInt(args->bits);
+
+		if (!isQuickCriblePassed(q)) {
+			freeInteger(&q);
+			continue;
+		}
+
+		// 4. Calcul de p = 2q + 1
+		CustomInteger temp = multiplyInteger(Two, q);
+		CustomInteger p = addInteger(temp, One);
+		freeInteger(&temp);
+
+		if (!isQuickCriblePassed(p)) {
+			freeInteger(&q);
+			freeInteger(&p);
+			continue;
+		}
+
+		if (!isProbablyPrime(q, 5)) {
+			freeInteger(&q);
+			freeInteger(&p);
+			continue;
+		}
+
+		if (!isProbablyPrime(p, 5)) {
+			freeInteger(&q);
+			freeInteger(&p);
+			continue;
+		}
+
+		pthread_mutex_lock(args->mutex);
+		if (!args->found) {
+			args->result_q = q;
+			args->result_p = p;
+			args->found = true;
+		} else {
+			freeInteger(&q);
+			freeInteger(&p);
+		}
+		pthread_mutex_unlock(args->mutex);
+
+		freeInteger(&One); freeInteger(&Two);
+		return NULL;
+	}
+}
+
 void* primeWorker(void* vargs) {
 	PrimeGenThreadArgs* args = (PrimeGenThreadArgs*)vargs;
 
@@ -104,6 +173,27 @@ void* primeWorker(void* vargs) {
 
 		freeInteger(&candidate);
 	}
+}
+
+void generateSafePrimeParallel(SizeT bits, int numThreads, CustomIntegerPtr out_q, CustomIntegerPtr out_p) {
+    pthread_t threads[numThreads];
+    SafePrimeGenArgs args;
+    pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
+    args.bits = bits;
+    args.found = false;
+    args.mutex = &mutex;
+
+    for (int i = 0; i < numThreads; i++) {
+        pthread_create(&threads[i], NULL, safePrimeWorker, &args);
+    }
+
+    for (int i = 0; i < numThreads; i++) {
+        pthread_join(threads[i], NULL);
+    }
+
+    *out_q = args.result_q;
+    *out_p = args.result_p;
 }
 
 CustomInteger generatePrimeParallel(SizeT bits, int numThreads) {
