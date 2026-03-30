@@ -333,7 +333,7 @@ CustomInteger modPowMontgomery(CustomInteger base, CustomInteger exp, CustomInte
 	CustomInteger precomputed[MONT_TABLE_SIZE];
 	precomputed[0] = copyIntegerToNew(base_mont);
 
-	CustomInteger sq_prod = multiplyKaratsuba(base_mont, base_mont);
+	CustomInteger sq_prod = squareInteger(base_mont);
 	CustomInteger base2 = montgomeryReduce(sq_prod, mod, m_prime);
 	freeInteger(&sq_prod);
 
@@ -354,7 +354,7 @@ CustomInteger modPowMontgomery(CustomInteger base, CustomInteger exp, CustomInte
 
 	while (i > 0) {
 		if (getBit(exp, i - 1) == 0) {
-			CustomInteger sq = multiplyKaratsuba(result_mont, result_mont);
+			CustomInteger sq = squareInteger(result_mont);
 			CustomInteger newRes = montgomeryReduce(sq, mod, m_prime);
 			freeInteger(&result_mont);
 			freeInteger(&sq);
@@ -370,7 +370,7 @@ CustomInteger modPowMontgomery(CustomInteger base, CustomInteger exp, CustomInte
 			}
 
 			for (SizeT k = i; k > j; k--) {
-				CustomInteger sq = multiplyKaratsuba(result_mont, result_mont);
+				CustomInteger sq = squareInteger(result_mont);
 				CustomInteger newRes = montgomeryReduce(sq, mod, m_prime);
 				freeInteger(&result_mont);
 				freeInteger(&sq);
