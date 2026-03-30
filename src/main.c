@@ -8,11 +8,11 @@ int main(void) {
 	EGKeyPair pair = generateEGKeyPair(2048);
 	end = time(NULL);
 
-	printf("HULLO (Key pair generated in %ld seconds)\n", end - start);
+	printf("Key pair generated in %ld seconds\n", end - start);
 
 	printEGKeyPair(&pair, HEX);
 
-	CustomInteger message = generateRandomInt(511);
+	CustomInteger message = generateRandomInt(2000);
 	EGCiphered ciphered = cipherData(message, pair.pub);
 	CustomInteger deciphered = decipherData(ciphered, pair);
 
