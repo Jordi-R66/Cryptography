@@ -9,7 +9,7 @@ CFLAGS = -std=c17 -Wall -Wextra -O3 \
 		-Isrc/common_headers -Ilibs/myOwnCLib
 
 # Flags de l'éditeur de liens (Linker)
-LDFLAGS = -s -flto
+LDFLAGS = -flto
 
 # Librairies externes (pthread pour ton utils.c)
 LDLIBS = -lpthread
@@ -44,6 +44,7 @@ TARGET = crypto_app.out
 all: $(TARGET)
 
 # Édition de liens (création de l'exécutable)
+# Ajouter les paramètres -g -fsanitize=address pour débug la mémoire en cas de fuite, ou détecter des risques de fuite
 $(TARGET): $(OBJS)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
 
