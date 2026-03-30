@@ -1,43 +1,33 @@
-#include "common_headers/utils.h"
+#include "utils.h"
+#include "elgamal/elgamal.h"
 #include <time.h>
 
 int main(void) {
-	CustomInteger p, q, n;
+	EGKeyPair pair = generateEGKeyPair(512);
 
-	time_t start, stop;
+	printf("HULLO\n");
 
-	start = time(NULL);
-	p = generatePrimeParallel(4096, 6);
-	//q = generatePrimeParallel(2048, 12);
-	stop = time(NULL);
-	n = generateRandomInvertible(p);
-	reallocToFitInteger(&n);
+	printEGKeyPair(&pair, HEX);
 
-	printf("p=");
-	printInteger(p, DEC, false);
-	//printInteger(q, DEC, false);
+	CustomInteger message = generateRandomInt(511);
+	EGCiphered ciphered = cipherData(message, pair.pub);
+	CustomInteger deciphered = decipherData(ciphered, pair);
 
-	printf("Computed in %ld seconds\n", stop - start);
-	// 137 secondes pour 2 premiers de 4096 bits sur Ryzen 5 7533HS jusqu'à 4.4 GHz et 75°C avec 1 seul thread
-	// 42 secondes pour 2 premiers de 4096 bits sur Ryzen 5 7533HS jusqu'à 4.4 GHz et 82°C avec 12 threads
+	printf("Message (clear) = ");
+	printInteger(message, HEX, false);
+	printf("temp key = ");
+	printInteger(ciphered.tempKey, HEX, false);
+	printf("Message (ciphered) = ");
+	printInteger(ciphered.c, HEX, false);
+	printf("Message (deciphered) = ");
+	printInteger(deciphered, HEX, false);
 
-	printf("a=");
-	printInteger(n, DEC, false);
+	freeInteger(&message);
+	freeInteger(&ciphered.c);
+	freeInteger(&ciphered.tempKey);
+	freeInteger(&deciphered);
 
-	Euclide temp = ExtendedStein(n, p);
-
-	printf("pgcd=");
-	printInteger(temp.gcd, DEC, false);
-
-	printf("u=");
-	printInteger(temp.u, DEC, false);
-
-	printf("v=");
-	printInteger(temp.v, DEC, false);
-
-	freeInteger(&p);
-	//freeInteger(&q);
-	freeInteger(&n);
+	freeEGKeyPair(&pair);
 
 	return 0;
 }
