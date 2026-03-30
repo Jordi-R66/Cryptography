@@ -47,6 +47,7 @@ all: $(TARGET)
 # Ajouter les paramètres -g -fsanitize=address pour débug la mémoire en cas de fuite, ou détecter des risques de fuite
 $(TARGET): $(OBJS)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LDLIBS)
+	$(CC) -S
 
 # Compilation des fichiers .c en fichiers .o
 %.o: %.c
