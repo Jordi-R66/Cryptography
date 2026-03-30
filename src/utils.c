@@ -137,9 +137,11 @@ Word inverseMod32(Word x) {
 }
 
 CustomInteger montgomeryReduce(CustomInteger T, CustomInteger M, Word m_prime) {
-	CustomInteger result = allocInteger(T.size > M.size * 2 ? T.size + 1 : M.size * 2 + 1);
+	SizeT requiredCapacity = T.size > M.size * 2 ? T.size + 1 : M.size * 2 + 1;
+	CustomInteger result = allocInteger(requiredCapacity);
+	
 	copyMemory(T.value, result.value, T.size * sizeof(Word));
-	result.size = T.size;
+	result.size = requiredCapacity; 
 
 	for (SizeT i = 0; i < M.size; i++) {
 		Word u = result.value[i] * m_prime;
@@ -155,20 +157,29 @@ CustomInteger montgomeryReduce(CustomInteger T, CustomInteger M, Word m_prime) {
 
 		SizeT k = i + M.size;
 		while (carry > 0) {
-			if (k >= result.capacity) reallocInteger(&result, result.capacity + 1);
+			if (k >= result.capacity) {
+				reallocInteger(&result, result.capacity + 1);
+				result.size = result.capacity;
+			}
 			DoubleWord temp = (DoubleWord)result.value[k] + carry;
 			result.value[k] = (Word)(temp & 0xFFFFFFFF);
 			carry = temp >> 32;
-			if (k >= result.size) result.size = k + 1;
 			k++;
 		}
 	}
 
-	CustomInteger finalRes = allocInteger(M.size + 1);
-	for (SizeT i = 0; i < result.size - M.size; i++) {
-		finalRes.value[i] = result.value[i + M.size];
+	SizeT wordsToCopy = (result.size > M.size) ? (result.size - M.size) : 0;
+	
+	CustomInteger finalRes = allocInteger(wordsToCopy > 0 ? wordsToCopy + 1 : 2);
+	finalRes.size = wordsToCopy > 0 ? wordsToCopy : 1;
+
+	if (wordsToCopy > 0) {
+		for (SizeT i = 0; i < wordsToCopy; i++) {
+			finalRes.value[i] = result.value[i + M.size];
+		}
+	} else {
+		finalRes.value[0] = 0;
 	}
-	finalRes.size = result.size > M.size ? result.size - M.size : 1;
 
 	freeInteger(&result);
 
