@@ -1,0 +1,32 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"name": "GDB: Debug Crypto App",
+			"type": "cppdbg",
+			"request": "launch",
+			"program": "${workspaceFolder}/crypto_app_debug.out",
+			"args": [],
+			"stopAtEntry": false,
+			"cwd": "${workspaceFolder}",
+			"environment": [
+				{
+					// Optionnel mais utile : configure le comportement d'ASan
+					"name": "ASAN_OPTIONS",
+					"value": "abort_on_error=1:detect_leaks=1"
+				}
+			],
+			"externalConsole": false,
+			"MIMode": "gdb",
+			"setupCommands": [
+				{
+					"description": "Activer l'affichage formaté pour gdb",
+					"text": "-enable-pretty-printing",
+					"ignoreFailures": true
+				}
+			],
+			"preLaunchTask": "Build Debug",
+			"miDebuggerPath": "/usr/bin/gdb"
+		}
+	]
+}

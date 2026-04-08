@@ -4,9 +4,12 @@
 CC = gcc
 
 # Flags de compilation (-I pour les dossiers d'inclusion)
-CFLAGS = -std=c17 -Wall -Wextra -O3 \
-		-march=native -mtune=native -funroll-loops -fomit-frame-pointer \
+CFLAGS_PROD = -std=c17 -Wall -Wextra -O3 \
+		-march=native -mtune=native -funroll-loops -fomit-frame-pointer -masm=intel \
 		-Isrc/common_headers -Ilibs/myOwnCLib
+
+CFLAGS_DEBUG = -std=c17 -Wall -Wextra -O3 -g -fsanitize=address -masm=intel \
+		-march=native -mtune=native -Isrc/common_headers -Ilibs/myOwnCLib
 
 # Flags de l'éditeur de liens (Linker)
 LDFLAGS = -flto
@@ -50,9 +53,19 @@ $(TARGET): $(OBJS)
 
 # Compilation des fichiers .c en fichiers .o
 %.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
-	$(CC) $(CFLAGS) -S $<
+	$(CC) $(CFLAGS_PROD) -c $< -o $@
+	$(CC) $(CFLAGS_PROD) -S $<
+	mkdir -p asm/
+	mv *.s asm/
+
+debug:
+	$(CC) $(CFLAGS_DEBUG) $(LDLIBS) $(SRCS) -o crypto_app_debug.out
+	$(CC) $(CFLAGS_DEBUG) $(SRCS) -S
+	mkdir -p asm/
+	mv *.s asm/
 
 # Nettoyage des fichiers générés
 clean:
 	rm -f $(OBJS) $(TARGET)
+	rm -f *.s
+	rm -rf asm/
