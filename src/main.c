@@ -5,7 +5,7 @@
 int main(void) {
 	time_t start, end;
 	start = time(NULL);
-	EGKeyPair pair = generateEGKeyPair(48);
+	EGKeyPair pair = generateEGKeyPair(2*1024);
 	end = time(NULL);
 
 	printf("Key pair generated in %ld seconds\n", end - start);
