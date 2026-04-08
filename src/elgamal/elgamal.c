@@ -16,12 +16,17 @@ EGKeyPair generateEGKeyPair(SizeT bits) {
 	q = &pub->q;
 	h = &pub->h;
 
+	printf("Génération des 2 premiers...\n");
 	generateSafePrimeParallel(bits, 12, q, p);
+	printf("Calcul de mu pour p...\n");
 	pub->barrettMu_p = getBarrettMu(*p);
 	priv->barrettMu_p = copyIntegerToNew(pub->barrettMu_p);
 
+	printf("Génération de a...\n");
 	*a = generateRandomInvertible(*p);
+	printf("Génération de x...\n");
 	*x = generateRandomCappedNumber(*q);
+	printf("Génération de h...\n");
 	*h = modPowInteger(*a, *x, *p);
 
 	return output;
