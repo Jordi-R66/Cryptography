@@ -1,6 +1,7 @@
 #include "common_headers/utils.h"
 #include <pthread.h>
 #include <sys/random.h>
+#include <errno.h>
 
 // Structure pour passer les arguments aux threads
 typedef struct {
@@ -24,39 +25,10 @@ Word modWord(CustomInteger a, Word b) {
 	DoubleWord remainder = 0;
 
 	for (SizeT i = a.size; i > 0; i--) {
-		remainder = ((remainder << 32) | (DoubleWord)a.value[i - 1]) % b;
+		remainder = ((remainder << (WORD_SIZE * 8)) | (DoubleWord)a.value[i - 1]) % b;
 	}
 
 	return (Word)remainder;
-}
-
-CustomInteger generateRandomInvertible(CustomInteger n) {
-	CustomInteger One = allocIntegerFromValue(1, false, true);
-	CustomInteger candidate;
-
-	SizeT nBits = getIntegerBitLength(n);
-
-	while (1) {
-		candidate = generateRandomInt(nBits);
-
-		if (isZero(candidate) || compareIntegers(candidate, n) != LESS) {
-			freeInteger(&candidate);
-			continue;
-		}
-
-		CustomInteger gcd = steinGcdInteger(candidate, n);
-
-		if (equalsInteger(gcd, One)) {
-			freeInteger(&gcd);
-			break; 
-		}
-
-		freeInteger(&gcd);
-		freeInteger(&candidate);
-	}
-
-	freeInteger(&One);
-	return candidate;
 }
 
 bool isQuickCriblePassed(CustomInteger candidate) {
@@ -95,7 +67,10 @@ void* safePrimeWorker(void* vargs) {
 	CustomInteger One = allocIntegerFromValue(1, false, true);
 	CustomInteger Two = allocIntegerFromValue(2, false, true);
 
+	SizeT i = 0;
+
 	while (1) {
+		printf("(%zu) %zu\n", args->bits, i++);
 		CustomInteger q = generateRandomInt(args->bits);
 		int retry_count = 0;
 
@@ -233,13 +208,14 @@ CustomInteger generatePrimeParallel(SizeT bits, int numThreads) {
 	return args.result;
 }
 
-// Calcule l'inverse modulaire d'un nombre impair modulo 2^32
-Word inverseMod32(Word x) {
+// Calcule l'inverse modulaire d'un nombre impair modulo 2^(WORD_SIZE * 8)
+Word inverseModWord(Word x) {
 	Word inv = x; // Estimation initiale
-	inv = inv * (2 - x * inv);
-	inv = inv * (2 - x * inv);
-	inv = inv * (2 - x * inv);
-	inv = inv * (2 - x * inv);
+
+	for (SizeT i = 0; i < WORD_SIZE; i++) {
+		inv = inv * (2 - x * inv);
+	}
+
 	return inv;
 }
 
@@ -258,8 +234,8 @@ CustomInteger montgomeryReduce(CustomInteger T, CustomInteger M, Word m_prime) {
 			DoubleWord temp = (DoubleWord)result.value[i + j] +
 				(DoubleWord)u * (DoubleWord)M.value[j] +
 				carry;
-			result.value[i + j] = (Word)(temp & 0xFFFFFFFF);
-			carry = temp >> 32;
+			result.value[i + j] = (Word)(temp & WORD_MAX_VAL);
+			carry = temp >> (WORD_SIZE * 8);
 		}
 
 		SizeT k = i + M.size;
@@ -269,8 +245,8 @@ CustomInteger montgomeryReduce(CustomInteger T, CustomInteger M, Word m_prime) {
 				result.size = result.capacity;
 			}
 			DoubleWord temp = (DoubleWord)result.value[k] + carry;
-			result.value[k] = (Word)(temp & 0xFFFFFFFF);
-			carry = temp >> 32;
+			result.value[k] = (Word)(temp & WORD_MAX_VAL);
+			carry = temp >> (WORD_SIZE * 8);
 			k++;
 		}
 	}
@@ -302,13 +278,23 @@ CustomInteger montgomeryReduce(CustomInteger T, CustomInteger M, Word m_prime) {
 }
 
 CustomInteger modPowMontgomery(CustomInteger base, CustomInteger exp, CustomInteger mod) {
-	Word m_prime = (Word)0 - inverseMod32(mod.value[0]);
+	Word m_prime = (Word)0 - inverseModWord(mod.value[0]);
 	SizeT N = mod.size;
 
-	CustomInteger R2 = allocIntegerFromValue(1, false, true);
-	BitshiftPtr(&R2, 2 * N * 32, LEFT, true);
-	CustomInteger R2_mod = modInteger(R2, mod);
-	freeInteger(&R2);
+	CustomInteger R2_mod = allocIntegerFromValue(1, false, true);
+	SizeT max_shifts = 2 * N * (WORD_SIZE * 8);
+
+	for (SizeT k = 0; k < max_shifts; k++) {
+		// 1. Décalage de 1 bit vers la gauche (équivaut à * 2)
+		BitshiftPtr(&R2_mod, 1, LEFT, true); 
+
+		// 2. Si R2_mod >= mod, on soustrait mod
+		if (compareIntegers(R2_mod, mod) != LESS) {
+			CustomInteger temp = subtractInteger(R2_mod, mod);
+			freeInteger(&R2_mod);
+			R2_mod = temp;
+		}
+	}
 
 	CustomInteger base_prod = multiplyKaratsuba(base, R2_mod);
 	CustomInteger base_mont = montgomeryReduce(base_prod, mod, m_prime);
@@ -321,9 +307,9 @@ CustomInteger modPowMontgomery(CustomInteger base, CustomInteger exp, CustomInte
 
 		if (msWordIdx > 0) {
 			Word topWord = exp.value[msWordIdx - 1];
-			int msBit = 31;
+			sSizeT msBit = ((WORD_SIZE * 8 ) - 1);
 			while (msBit >= 0 && !((topWord >> msBit) & 1)) msBit--;
-			maxBits = (msWordIdx - 1) * 32 + msBit + 1;
+			maxBits = (msWordIdx - 1) * (WORD_SIZE * 8) + msBit + 1;
 		}
 	}
 
@@ -399,6 +385,14 @@ CustomInteger modPowMontgomery(CustomInteger base, CustomInteger exp, CustomInte
 	return finalOutput;
 }
 
+size_t getRandom(void* buffer, size_t length) {
+	FILE* f = fopen("/dev/urandom", "r");
+	size_t ret = fread(buffer, 1, length, f);
+	fclose(f);
+
+	return ret;
+}
+
 /**
  * @brief Generates a random integer between [0; limit[
  * 
@@ -406,15 +400,74 @@ CustomInteger modPowMontgomery(CustomInteger base, CustomInteger exp, CustomInte
  * @return CustomInteger 
  */
 CustomInteger generateRandomCappedNumber(CustomInteger limit) {
-	CustomInteger result = { 0 };
+	if (isZero(limit)) {
+		return allocIntegerFromValue(0, false, true);
+	}
 
-	CustomInteger temp = generateRandomInt(getIntegerBitLength(limit));
+	CustomInteger result = allocInteger(limit.size);
+	result.size = limit.size;
 
-	result = modInteger(temp, limit);
+	while (1) {
+		// 1. On tire des octets 100% aléatoires purs
+		size_t bytes_read = getRandom(result.value, limit.size * sizeof(Word));
+		if (bytes_read == 0) {
+			fprintf(stderr, "Fatal Error : getRandom() failed\n");
+			exit(EXIT_FAILURE);
+		}
 
-	freeInteger(&temp);
+		// 2. On masque les bits excédentaires pour ne pas dépasser inutilement
+		Word topWordLimit = limit.value[limit.size - 1];
+		sSizeT msBit = ((WORD_SIZE * 8 ) - 1);
+		while (msBit >= 0 && !((topWordLimit >> msBit) & 1)) {
+			msBit--;
+		}
+
+		if (msBit < ((WORD_SIZE * 8 ) - 1)) {
+			Word mask = WORD_MAX_VAL >> ((WORD_SIZE * 8) - 1 - msBit);
+			result.value[limit.size - 1] &= mask;
+		}
+
+		reallocToFitInteger(&result);
+
+		// 3. Rejection Sampling : Si on est strictement inférieur, on a gagné !
+		// Sinon on recommence la boucle (ce qui supprime totalement le Modulo Bias)
+		if (compareIntegers(result, limit) == LESS) {
+			break;
+		}
+
+		// Reset de la taille pour le prochain appel à getRandom
+		result.size = limit.size; 
+	}
 
 	return result;
+}
+
+CustomInteger generateRandomInvertible(CustomInteger n) {
+	CustomInteger One = allocIntegerFromValue(1, false, true);
+	CustomInteger candidate;
+
+	while (1) {
+		// On utilise notre nouvelle fonction parfaitement bornée !
+		candidate = generateRandomCappedNumber(n);
+
+		if (isZero(candidate)) {
+			freeInteger(&candidate);
+			continue;
+		}
+
+		CustomInteger gcd = steinGcdInteger(candidate, n);
+
+		if (equalsInteger(gcd, One)) {
+			freeInteger(&gcd);
+			break; 
+		}
+
+		freeInteger(&gcd);
+		freeInteger(&candidate);
+	}
+
+	freeInteger(&One);
+	return candidate;
 }
 
 CustomInteger generateRandomBase(CustomInteger n) {
@@ -426,21 +479,21 @@ CustomInteger generateRandomBase(CustomInteger n) {
 	a.size = n.size;
 
 	while (1) {
-		ssize_t bytes_read = getrandom(a.value, n.size * sizeof(Word), 0);
-		
-		if (bytes_read < 0) {
-			fprintf(stderr, "Erreur fatale : getrandom() a échoué\n");
+		size_t bytes_read = getRandom(a.value, n.size * sizeof(Word));
+
+		if (bytes_read == 0) {
+			fprintf(stderr, "Erreur fatale : getRandom() a échoué\n");
 			exit(EXIT_FAILURE);
 		}
 
 		Word topWordN = n.value[n.size - 1];
-		int msBit = 31;
+		sSizeT msBit = ((WORD_SIZE * 8 ) - 1);
 		while (msBit >= 0 && !((topWordN >> msBit) & 1)) {
 			msBit--;
 		}
 
-		if (msBit < 31) {
-			Word mask = (1U << (msBit + 1)) - 1;
+		if (msBit < ((WORD_SIZE * 8 ) - 1)) {
+			Word mask = WORD_MAX_VAL >> ((WORD_SIZE * 8) - 1 - msBit);
 			a.value[n.size - 1] &= mask;
 		}
 
@@ -465,27 +518,44 @@ CustomInteger generateRandomBase(CustomInteger n) {
 	return a;
 }
 
-CustomInteger generateRandomInt(SizeT bits) {
-	SizeT nbWords = (bits + 31) / 32;
-	CustomInteger result = allocInteger(nbWords);
+// Fonction blindée contre les interruptions système (GDB / Signaux)
+void fillRandomBytes(void* buffer, SizeT length) {
+	uint8_t* ptr = (uint8_t*)buffer;
+	SizeT total_read = 0;
 
+	while (total_read < length) {
+		ssize_t bytes = getrandom(ptr + total_read, length - total_read, 0);
+		
+		if (bytes < 0) {
+			// Si le syscall est interrompu par GDB ou l'OS, on l'ignore et on recommence
+			if (errno == EINTR) {
+				continue; 
+			}
+			fprintf(stderr, "Fatal Error : getrandom() failed\n");
+			exit(EXIT_FAILURE);
+		}
+		
+		total_read += (SizeT)bytes;
+	}
+}
+
+CustomInteger generateRandomInt(SizeT bits) {
+	SizeT nbWords = (bits + ((WORD_SIZE * 8 ) - 1)) / (WORD_SIZE * 8);
+	CustomInteger result = allocInteger(nbWords);
 	result.size = nbWords;
 
-	ssize_t bytes_read = getrandom(result.value, nbWords * sizeof(Word), 0);
+	// 1. Appel du nouveau wrapper blindé
+	fillRandomBytes(result.value, nbWords * sizeof(Word));
 
-	if (bytes_read < 0) {
-		freeInteger(&result);
-		fprintf(stderr, "Fatal Error : getrandom() failed to provide a random number\n");
-		exit(EXIT_FAILURE);
-	}
-
-	SizeT extraBits = (nbWords << 5) - bits;
+	SizeT extraBits = (nbWords * WORD_SIZE * 8) - bits;;
 	if (extraBits > 0) {
-		result.value[nbWords - 1] &= (0xFFFFFFFF >> extraBits);
+		result.value[nbWords - 1] &= (WORD_MAX_VAL >> extraBits);
 	}
 
-	SizeT msBitIndex = (bits - 1) % 32;
-	result.value[nbWords - 1] |= (1 << msBitIndex);
+	sSizeT msBitIndex = (bits - 1) % (WORD_SIZE * 8);
+
+	// 2. FIX CRITIQUE : Utilisation de 1U (Unsigned) pour éviter l'Undefined Behavior
+	result.value[nbWords - 1] |= (((Word)1) << msBitIndex);
 
 	result.value[0] |= 1;
 
@@ -494,7 +564,7 @@ CustomInteger generateRandomInt(SizeT bits) {
 	return result;
 }
 
-bool isProbablyPrime(CustomInteger n, uint32 k) {
+bool isProbablyPrime(CustomInteger n, Word k) {
 	bool isPrime = true;
 	CustomInteger One = allocIntegerFromValue(1, false, true);
 	CustomInteger Two = allocIntegerFromValue(2, false, true);
@@ -510,7 +580,7 @@ bool isProbablyPrime(CustomInteger n, uint32 k) {
 	}
 
 	// Étape B : Boucle de k tests
-	for (uint32 i = 0; i < k; i++) {
+	for (Word i = 0; i < k; i++) {
 		CustomInteger a = generateRandomBase(n);
 		CustomInteger x = modPowMontgomery(a, d, n);
 
@@ -524,12 +594,13 @@ bool isProbablyPrime(CustomInteger n, uint32 k) {
 		bool innerLoopPassed = false;
 
 		for (SizeT r = 1; r < s; r++) {
+			//printf("[DEBUG] x_sq computed here:\n");
 			CustomInteger x_sq = modPowMontgomery(x, Two, n);
+			printInteger(x_sq, HEX, false);
 			freeInteger(&x);
 			x = x_sq;
 
 			if (equalsInteger(x, One)) {
-				freeInteger(&x);
 				isPrime = false;
 				break;
 			}

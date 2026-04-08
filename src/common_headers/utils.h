@@ -12,7 +12,7 @@ CustomInteger generateRandomInvertible(CustomInteger n);
  * @return CustomInteger 
  */
 CustomInteger generateRandomCappedNumber(CustomInteger limit);
-bool isProbablyPrime(CustomInteger n, uint32 k);
+bool isProbablyPrime(CustomInteger n, Word k);
 CustomInteger generatePrime(SizeT bits);
 CustomInteger generatePrimeParallel(SizeT bits, int numThreads);
 void generateSafePrimeParallel(SizeT bits, int numThreads, CustomIntegerPtr out_q, CustomIntegerPtr out_p);
