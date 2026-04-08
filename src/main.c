@@ -5,14 +5,14 @@
 int main(void) {
 	time_t start, end;
 	start = time(NULL);
-	EGKeyPair pair = generateEGKeyPair(2048);
+	EGKeyPair pair = generateEGKeyPair(48);
 	end = time(NULL);
 
 	printf("Key pair generated in %ld seconds\n", end - start);
 
 	printEGKeyPair(&pair, HEX);
 
-	CustomInteger message = generateRandomInt(2000);
+	CustomInteger message = generateRandomInt(32);
 	EGCiphered ciphered = cipherData(message, pair.pub);
 	CustomInteger deciphered = decipherData(ciphered, pair);
 
