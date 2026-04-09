@@ -5,24 +5,29 @@
 int main(void) {
 	time_t start, end;
 
-	int final = 0;
-	int amount = 100;
+	start = time(NULL);
+	SizeT keySize = 1 * 1024;
+	EGKeyPair pair = generateEGKeyPair(keySize);
+	end = time(NULL);
 
-	for (int n = 1; n <= amount; n++) {
-		start = time(NULL);
-		EGKeyPair pair = generateEGKeyPair(3 * 1024);
-		end = time(NULL);
+	printf("%zu bits Key pair generated in %ld seconds\n", keySize, end - start);
 
-		printf("Key pair %d generated in %ld seconds\n", n, end - start);
-		final += end - start;
+	printEGKeyPair(&pair, HEX);
 
-		freeEGKeyPair(&pair);
-	}
+	FILE* fp_pub_out = fopen("eg_pub.key", "w");
+	FILE* fp_priv_out = fopen("eg_priv.key", "w");
 
-	printf("Total: %d secs\nAvg: %d secs/pair\n", final, final / amount);
+	exportEGPrivateKey(&pair.priv, fp_priv_out, true);
+	exportEGPublicKey(&pair.pub, fp_pub_out, true);
 
-	/*printEGKeyPair(&pair, HEX);
+	FILE* fp_pub_in = fopen("eg_pub.key", "r");
+	FILE* fp_priv_in = fopen("eg_priv.key", "r");
 
+	EGKeyPair paire = { .priv = importEGPrivateKey(fp_priv_in, true), .pub = importEGPublicKey(fp_pub_in, true) };
+
+	printEGKeyPair(&paire, HEX);
+
+	/*
 	CustomInteger message = generateRandomInt(32);
 	EGCiphered ciphered = cipherData(message, pair.pub);
 	CustomInteger deciphered = decipherData(ciphered, pair);
@@ -40,8 +45,10 @@ int main(void) {
 	freeInteger(&ciphered.c);
 	freeInteger(&ciphered.tempKey);
 	freeInteger(&deciphered);
+	*/
 
-	freeEGKeyPair(&pair);*/
+	freeEGKeyPair(&pair);
+	freeEGKeyPair(&paire);
 
 	return 0;
 }

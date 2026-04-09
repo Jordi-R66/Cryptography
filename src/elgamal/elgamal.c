@@ -209,14 +209,14 @@ EGPublicKey importEGPublicKey(FILE* fp, bool closeAfterReading) {
 
 				uint64 sizeInBytes;
 				SizeT sizeInWords = 0;
-				fwrite(&sizeInBytes, sizeof(uint64), 1, fp);
+				fread(&sizeInBytes, sizeof(uint64), 1, fp);
 
 				sizeInWords = (((SizeT)sizeInBytes % WORD_SIZE) > 0) + ((SizeT)sizeInBytes / WORD_SIZE);
 
 				*custInt = allocInteger(sizeInWords);
 				custInt->size = custInt->capacity;
 
-				custInt->size = (SizeT)fwrite(custInt->value, WORD_SIZE, sizeInWords, fp);
+				custInt->size = (SizeT)fread(custInt->value, WORD_SIZE, sizeInWords, fp);
 			}
 
 			if (closeAfterReading) {
@@ -248,14 +248,14 @@ EGPrivateKey importEGPrivateKey(FILE* fp, bool closeAfterReading) {
 
 				uint64 sizeInBytes;
 				SizeT sizeInWords = 0;
-				fwrite(&sizeInBytes, sizeof(uint64), 1, fp);
+				fread(&sizeInBytes, sizeof(uint64), 1, fp);
 
 				sizeInWords = (((SizeT)sizeInBytes % WORD_SIZE) > 0) + ((SizeT)sizeInBytes / WORD_SIZE);
 
 				*custInt = allocInteger(sizeInWords);
 				custInt->size = custInt->capacity;
 
-				custInt->size = (SizeT)fwrite(custInt->value, WORD_SIZE, sizeInWords, fp);
+				custInt->size = (SizeT)fread(custInt->value, WORD_SIZE, sizeInWords, fp);
 			}
 
 			if (closeAfterReading) {
