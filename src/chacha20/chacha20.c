@@ -32,7 +32,7 @@ inline uint32 ROTL32(uint32 a, uint32 n) {
 
 #pragma region Miscs
 
-void QuarterRound(uint32* a, uint32* b, uint32* c, uint32* d) {
+inline void QuarterRound(uint32* a, uint32* b, uint32* c, uint32* d) {
 	*a += *b;
 	*d ^= *a;
 	*d = ROTL32(*d, 16);
