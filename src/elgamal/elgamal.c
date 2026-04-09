@@ -146,8 +146,8 @@ void exportEGPublicKey(EGPublicKey* pubkey, FILE* fp, bool closeAfterWriting) {
 		for (SizeT i = 0; i < (sizeof(ints) / sizeof(CustomIntegerPtr)); i++) {
 			CustomIntegerPtr custInt = ints[i];
 
-			SizeT sizeInBytes = custInt->size * WORD_SIZE;
-			fwrite(&sizeInBytes, SIZET_SIZE, 1, fp);
+			uint64 sizeInBytes = custInt->size * WORD_SIZE;
+			fwrite(&sizeInBytes, sizeof(uint64), 1, fp);
 
 			fwrite(custInt->value, WORD_SIZE, custInt->size, fp);
 		}
