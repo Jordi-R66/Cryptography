@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#define LIMIT 50000
+#define LIMIT 75000
 
 int main() {
 	// Allocation du tableau de booléens pour le crible d'Ératosthène
@@ -28,22 +28,18 @@ int main() {
 		return 1;
 	}
 
-	fprintf(file, "static const Word smallPrimes[] = {\n    ");
+	fprintf(file, "static const Word smallPrimes[] = { ");
 
 	int count = 0;
 	for (int p = 2; p <= LIMIT; p++) {
 		if (is_prime[p]) {
 			fprintf(file, "%d, ", p);
 			count++;
-			// Retour à la ligne tous les 15 nombres pour garder un code propre
-			if (count % 15 == 0) {
-				fprintf(file, "\n    ");
-			}
 		}
 	}
 
-	fprintf(file, "\n};\n");
-	fprintf(file, "// Nombre total de nombres premiers : %d\n", count);
+	fprintf(file, " };\n");
+	//fprintf(file, "// Nombre total de nombres premiers : %d\n", count);
 
 	fclose(file);
 	free(is_prime);
