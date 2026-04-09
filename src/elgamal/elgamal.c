@@ -1,4 +1,5 @@
 #include "elgamal.h"
+#include "constants.h"
 
 #pragma region Generation and Deletion
 
@@ -124,6 +125,65 @@ void printEGPrivateKey(EGPrivateKey* priv, Base base) {
 void printEGKeyPair(EGKeyPair* pair, Base base) {
 	printEGPublicKey(&pair->pub, base);
 	printEGPrivateKey(&pair->priv, base);
+}
+
+void exportEGPublicKey(EGPublicKey* pubkey, FILE* fp, bool closeAfterWriting) {
+	AlgoId algo = (AlgoId)EL_GAMAL;
+	KeyT keyType = (KeyT)PUBLIC_KEY;
+
+	CustomIntegerPtr ints[] = {
+		&pubkey->p,
+		&pubkey->a,
+		&pubkey->q,
+		&pubkey->h,
+		&pubkey->barrettMu_p
+	};
+
+	if (fp != NULL) {
+		fwrite(&algo, sizeof(AlgoId), 1, fp);
+		fwrite(&keyType, sizeof(KeyT), 1, fp);
+
+		for (SizeT i = 0; i < (sizeof(ints) / sizeof(CustomIntegerPtr)); i++) {
+			CustomIntegerPtr custInt = ints[i];
+
+			SizeT capacityBytes = custInt->capacity * WORD_SIZE;
+			fwrite(&capacityBytes, SIZET_SIZE, 1, fp);
+
+			fwrite(custInt->value, WORD_SIZE, custInt->capacity, fp);
+		}
+	}
+
+	if (closeAfterWriting) {
+		fclose(fp);
+	}
+}
+
+void exportEGPrivateKey(EGPrivateKey* privkey, FILE* fp, bool closeAfterWriting) {
+	AlgoId algo = (AlgoId)EL_GAMAL;
+	KeyT keyType = (KeyT)PRIVATE_KEY;
+
+	CustomIntegerPtr ints[] = {
+		&privkey->x,
+		&privkey->barrettMu_p
+	};
+
+	if (fp != NULL) {
+		fwrite(&algo, sizeof(AlgoId), 1, fp);
+		fwrite(&keyType, sizeof(KeyT), 1, fp);
+
+		for (SizeT i = 0; i < (sizeof(ints) / sizeof(CustomIntegerPtr)); i++) {
+			CustomIntegerPtr custInt = ints[i];
+
+			SizeT capacityBytes = custInt->capacity * WORD_SIZE;
+			fwrite(&capacityBytes, SIZET_SIZE, 1, fp);
+
+			fwrite(custInt->value, WORD_SIZE, custInt->capacity, fp);
+		}
+	}
+
+	if (closeAfterWriting) {
+		fclose(fp);
+	}
 }
 
 #pragma endregion
