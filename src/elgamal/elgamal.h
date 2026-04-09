@@ -40,3 +40,6 @@ void freeEGKeyPair(EGKeyPair* pair);
 void printEGPublicKey(EGPublicKey* pub, Base base);
 void printEGPrivateKey(EGPrivateKey* priv, Base base);
 void printEGKeyPair(EGKeyPair* pair, Base base);
+
+void exportEGPublicKey(EGPublicKey* pubkey, FILE* fp, bool closeAfterWriting);
+void exportEGPrivateKey(EGPrivateKey* privkey, FILE* fp, bool closeAfterWriting);
