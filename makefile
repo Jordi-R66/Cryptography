@@ -6,10 +6,10 @@ CC = gcc
 # Flags de compilation (-I pour les dossiers d'inclusion)
 CFLAGS_PROD = -std=c17 -Wall -Wextra -O3 \
 		-march=native -mtune=native -funroll-loops -fomit-frame-pointer -masm=intel \
-		-Isrc/common_headers -Ilibs/myOwnCLib
+		-Isrc/common -Ilibs/myOwnCLib
 
 CFLAGS_DEBUG = -std=c17 -Wall -Wextra -O3 -g -fsanitize=address -masm=intel \
-		-march=native -mtune=native -Isrc/common_headers -Ilibs/myOwnCLib
+		-march=native -mtune=native -Isrc/common -Ilibs/myOwnCLib
 
 # Flags de l'éditeur de liens (Linker)
 LDFLAGS = -flto
@@ -20,7 +20,8 @@ LDLIBS = -lpthread
 # ==========================================
 # Fichiers sources
 # ==========================================
-APP_SRCS = src/main.c src/utils.c
+APP_SRCS = src/main.c
+COMMON_SRCS = src/common/utils.c
 
 EL_GAMAL_SRCS = src/elgamal/elgamal.c
 
@@ -30,7 +31,7 @@ LIB_SRCS = libs/myOwnCLib/variableSizeInt/customInteger.c \
 			libs/myOwnCLib/endianness/endianness.c
 
 # Concaténation de toutes les sources
-SRCS = $(APP_SRCS) $(EL_GAMAL_SRCS) $(LIB_SRCS)
+SRCS = $(APP_SRCS) $(COMMON_SRCS) $(EL_GAMAL_SRCS) $(LIB_SRCS)
 
 # Transformation de la liste des .c en .o (fichiers objets)
 OBJS = $(SRCS:.c=.o)

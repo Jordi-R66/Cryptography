@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../common_headers/includes.h"
-#include "../common_headers/utils.h"
+#include "../common/includes.h"
+#include "../common/utils.h"
 
 #pragma pack()
 
