@@ -1,54 +1,18 @@
 #include "common/utils.h"
-#include "elgamal/elgamal.h"
+#include "chacha20/chacha20.h"
 #include <time.h>
 
 int main(void) {
-	time_t start, end;
+	uint32	a = 0x11111111,
+			b = 0x01020304,
+			c = 0x9b8d6f43,
+			d = 0x01234567;
 
-	start = time(NULL);
-	SizeT keySize = 1 * 1024;
-	EGKeyPair pair = generateEGKeyPair(keySize);
-	end = time(NULL);
+	printf("A : %08X\nB : %08X\nC : %08X\nD : %08X\n\n", a, b, c, d);
 
-	printf("%zu bits Key pair generated in %ld seconds\n", keySize, end - start);
+	QuarterRound(&a, &b, &c, &d);
 
-	printEGKeyPair(&pair, HEX);
-
-	FILE* fp_pub_out = fopen("eg_pub.key", "w");
-	FILE* fp_priv_out = fopen("eg_priv.key", "w");
-
-	exportEGPrivateKey(&pair.priv, fp_priv_out, true);
-	exportEGPublicKey(&pair.pub, fp_pub_out, true);
-
-	FILE* fp_pub_in = fopen("eg_pub.key", "r");
-	FILE* fp_priv_in = fopen("eg_priv.key", "r");
-
-	EGKeyPair paire = { .priv = importEGPrivateKey(fp_priv_in, true), .pub = importEGPublicKey(fp_pub_in, true) };
-
-	printEGKeyPair(&paire, HEX);
-
-	/*
-	CustomInteger message = generateRandomInt(32);
-	EGCiphered ciphered = cipherData(message, pair.pub);
-	CustomInteger deciphered = decipherData(ciphered, pair);
-
-	printf("Message (clear) = ");
-	printInteger(message, HEX, false);
-	printf("temp key = ");
-	printInteger(ciphered.tempKey, HEX, false);
-	printf("Message (ciphered) = ");
-	printInteger(ciphered.c, HEX, false);
-	printf("Message (deciphered) = ");
-	printInteger(deciphered, HEX, false);
-
-	freeInteger(&message);
-	freeInteger(&ciphered.c);
-	freeInteger(&ciphered.tempKey);
-	freeInteger(&deciphered);
-	*/
-
-	freeEGKeyPair(&pair);
-	freeEGKeyPair(&paire);
+	printf("A : %08X\nB : %08X\nC : %08X\nD : %08X\n", a, b, c, d);
 
 	return 0;
 }
