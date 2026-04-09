@@ -4,13 +4,24 @@
 
 int main(void) {
 	time_t start, end;
-	start = time(NULL);
-	EGKeyPair pair = generateEGKeyPair(2*1024);
-	end = time(NULL);
 
-	printf("Key pair generated in %ld seconds\n", end - start);
+	int final = 0;
+	int amount = 100;
 
-	printEGKeyPair(&pair, HEX);
+	for (int n = 1; n <= amount; n++) {
+		start = time(NULL);
+		EGKeyPair pair = generateEGKeyPair(3 * 1024);
+		end = time(NULL);
+
+		printf("Key pair %d generated in %ld seconds\n", n, end - start);
+		final += end - start;
+
+		freeEGKeyPair(&pair);
+	}
+
+	printf("Total: %d secs\nAvg: %d secs/pair\n", final, final / amount);
+
+	/*printEGKeyPair(&pair, HEX);
 
 	CustomInteger message = generateRandomInt(32);
 	EGCiphered ciphered = cipherData(message, pair.pub);
@@ -30,7 +41,7 @@ int main(void) {
 	freeInteger(&ciphered.tempKey);
 	freeInteger(&deciphered);
 
-	freeEGKeyPair(&pair);
+	freeEGKeyPair(&pair);*/
 
 	return 0;
 }
