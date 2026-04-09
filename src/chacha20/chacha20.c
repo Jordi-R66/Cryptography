@@ -28,4 +28,26 @@ inline uint32 ROTL32(uint32 a, uint32 n) {
 	return output;
 }
 
-#pragma enregion
+#pragma endregion
+
+#pragma region Miscs
+
+void QuarterRound(uint32* a, uint32* b, uint32* c, uint32* d) {
+	*a += *b;
+	*d ^= *a;
+	*d = ROTL32(*d, 16);
+
+	*c += *d;
+	*b ^= *c;
+	*b = ROTL32(*b, 12);
+
+	*a += *b;
+	*d ^= *a;
+	*d = ROTL32(*d, 8);
+
+	*c += *d;
+	*b ^= *c;
+	*b = ROTL32(*b, 7);
+}
+
+#pragma endregion

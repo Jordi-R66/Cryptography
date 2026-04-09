@@ -9,3 +9,9 @@ inline void breakInt32LE(uint32 a, Byte bytes[4]);
 inline uint32 ROTL32(uint32 a, uint32 n);
 
 #pragma endregion
+
+#pragma region Miscs
+
+void QuarterRound(uint32* a, uint32* b, uint32* c, uint32* d);
+
+#pragma endregion
