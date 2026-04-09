@@ -3,12 +3,12 @@
 #include "includes.h"
 
 typedef enum KnownCiphers {
-	UNKNOWN = 0,
+	UNKNOWN_CIPHER = 0,
 	EL_GAMAL = 1
 } KnownCiphers;
 
 typedef enum KeyType {
-	UNKNOWN = 0,
+	UNKNOWN_KEYTYPE = 0,
 	SECRET_KEY = 1,
 	PUBLIC_KEY = 2,
 	PRIVATE_KEY = 3
