@@ -1,4 +1,4 @@
-#include "utils.h"
+#include "common/utils.h"
 #include "elgamal/elgamal.h"
 #include <time.h>
 
