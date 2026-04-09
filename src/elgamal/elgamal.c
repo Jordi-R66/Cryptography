@@ -174,8 +174,8 @@ void exportEGPrivateKey(EGPrivateKey* privkey, FILE* fp, bool closeAfterWriting)
 		for (SizeT i = 0; i < (sizeof(ints) / sizeof(CustomIntegerPtr)); i++) {
 			CustomIntegerPtr custInt = ints[i];
 
-			SizeT sizeInBytes = custInt->size * WORD_SIZE;
-			fwrite(&sizeInBytes, SIZET_SIZE, 1, fp);
+			uint64 sizeInBytes = custInt->size * WORD_SIZE;
+			fwrite(&sizeInBytes, sizeof(uint64), 1, fp);
 
 			fwrite(custInt->value, WORD_SIZE, custInt->size, fp);
 		}
@@ -184,6 +184,87 @@ void exportEGPrivateKey(EGPrivateKey* privkey, FILE* fp, bool closeAfterWriting)
 	if (closeAfterWriting) {
 		fclose(fp);
 	}
+}
+
+EGPublicKey importEGPublicKey(FILE* fp, bool closeAfterReading) {
+	EGPublicKey output = { 0 };
+
+	AlgoId algo; KeyT keyType;
+
+	CustomIntegerPtr ints[] = {
+		&output.p,
+		&output.a,
+		&output.q,
+		&output.h,
+		&output.barrettMu_p
+	};
+
+	if (fp != NULL) {
+		fread(&algo, sizeof(AlgoId), 1, fp);
+		fread(&keyType, sizeof(KeyT), 1, fp);
+
+		if (algo == EL_GAMAL && keyType == PUBLIC_KEY) {
+			for (SizeT i = 0; i < (sizeof(ints) / sizeof(CustomIntegerPtr)); i++) {
+				CustomIntegerPtr custInt = ints[i];
+
+				uint64 sizeInBytes;
+				SizeT sizeInWords = 0;
+				fwrite(&sizeInBytes, sizeof(uint64), 1, fp);
+
+				sizeInWords = (((SizeT)sizeInBytes % WORD_SIZE) > 0) + ((SizeT)sizeInBytes / WORD_SIZE);
+
+				*custInt = allocInteger(sizeInWords);
+				custInt->size = custInt->capacity;
+
+				custInt->size = (SizeT)fwrite(custInt->value, WORD_SIZE, sizeInWords, fp);
+			}
+
+			if (closeAfterReading) {
+				fclose(fp);
+			}
+		}
+	}
+
+	return output;
+}
+
+EGPrivateKey importEGPrivateKey(FILE* fp, bool closeAfterReading) {
+	EGPrivateKey output = { 0 };
+
+	AlgoId algo; KeyT keyType;
+
+	CustomIntegerPtr ints[] = {
+		&output.x,
+		&output.barrettMu_p
+	};
+
+	if (fp != NULL) {
+		fread(&algo, sizeof(AlgoId), 1, fp);
+		fread(&keyType, sizeof(KeyT), 1, fp);
+
+		if (algo == EL_GAMAL && keyType == PRIVATE_KEY) {
+			for (SizeT i = 0; i < (sizeof(ints) / sizeof(CustomIntegerPtr)); i++) {
+				CustomIntegerPtr custInt = ints[i];
+
+				uint64 sizeInBytes;
+				SizeT sizeInWords = 0;
+				fwrite(&sizeInBytes, sizeof(uint64), 1, fp);
+
+				sizeInWords = (((SizeT)sizeInBytes % WORD_SIZE) > 0) + ((SizeT)sizeInBytes / WORD_SIZE);
+
+				*custInt = allocInteger(sizeInWords);
+				custInt->size = custInt->capacity;
+
+				custInt->size = (SizeT)fwrite(custInt->value, WORD_SIZE, sizeInWords, fp);
+			}
+
+			if (closeAfterReading) {
+				fclose(fp);
+			}
+		}
+	}
+
+	return output;
 }
 
 #pragma endregion

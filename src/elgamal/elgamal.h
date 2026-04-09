@@ -43,3 +43,5 @@ void printEGKeyPair(EGKeyPair* pair, Base base);
 
 void exportEGPublicKey(EGPublicKey* pubkey, FILE* fp, bool closeAfterWriting);
 void exportEGPrivateKey(EGPrivateKey* privkey, FILE* fp, bool closeAfterWriting);
+EGPublicKey importEGPublicKey(FILE* fp, bool closeAfterReading);
+EGPrivateKey importEGPrivateKey(FILE* fp, bool closeAfterReading);
