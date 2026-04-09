@@ -1,5 +1,7 @@
 #pragma once
 
+#include "includes.h"
+
 typedef enum KnownCiphers {
 	UNKNOWN = 0,
 	EL_GAMAL = 1
@@ -11,3 +13,6 @@ typedef enum KeyType {
 	PUBLIC_KEY = 2,
 	PRIVATE_KEY = 3
 } KeyType;
+
+typedef uint8 AlgoId;
+typedef uint8 KeyT;
