@@ -24,6 +24,7 @@ APP_SRCS = src/main.c
 COMMON_SRCS = src/common/utils.c
 
 EL_GAMAL_SRCS = src/elgamal/elgamal.c
+AES_SRCS = src/aes/aes*.c
 
 LIB_SRCS = libs/myOwnCLib/variableSizeInt/customInteger.c \
 			libs/myOwnCLib/strings/customStrings.c \
@@ -31,7 +32,7 @@ LIB_SRCS = libs/myOwnCLib/variableSizeInt/customInteger.c \
 			libs/myOwnCLib/endianness/endianness.c
 
 # Concaténation de toutes les sources
-SRCS = $(APP_SRCS) $(COMMON_SRCS) $(EL_GAMAL_SRCS) $(LIB_SRCS)
+SRCS = $(APP_SRCS) $(COMMON_SRCS) $(EL_GAMAL_SRCS) $(AES_SRCS)  $(LIB_SRCS)
 
 # Transformation de la liste des .c en .o (fichiers objets)
 OBJS = $(SRCS:.c=.o)
