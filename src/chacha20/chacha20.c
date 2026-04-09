@@ -51,3 +51,25 @@ inline void QuarterRound(uint32* a, uint32* b, uint32* c, uint32* d) {
 }
 
 #pragma endregion
+
+#pragma region Heart
+
+Chacha20_State initState(const Byte key[32], const Byte nonce[12]) {
+	Chacha20_State output = { .MagicWord = {0x61707865, 0x3320646e, 0x79622d32, 0x6b206574} };
+
+	// Key Recomposition
+	for (SizeT i = 0; i < 32; i += 4) {
+		output.raw[4 + (i >> 2)] = buildInt32LE(&key[i]);
+	}
+
+	// Nonce Recomposition
+	for (SizeT i = 0; i < 12; i += 4) {
+		output.raw[13 + (i >> 2)] = buildInt32LE(&nonce[i]);
+	}
+
+	return output;
+}
+
+Chacha20_State keystreamFactory(Chacha20_State previousState);
+
+#pragma endregion
