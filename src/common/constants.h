@@ -4,7 +4,8 @@
 
 typedef enum KnownCiphers {
 	UNKNOWN_CIPHER = 0,
-	EL_GAMAL = 1
+	EL_GAMAL = 1,
+	CHACHA20 = 2
 } KnownCiphers;
 
 typedef enum KeyType {
