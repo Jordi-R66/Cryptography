@@ -3,16 +3,20 @@
 #include <time.h>
 
 int main(void) {
-	uint32	a = 0x11111111,
-			b = 0x01020304,
-			c = 0x9b8d6f43,
-			d = 0x01234567;
+	Byte key[32] = { 0 };
+	Byte nonce[12] = { 0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00, 0x4a, 0x00, 0x00, 0x00, 0x00 };
+	Byte output[64] = { 0 };
 
-	printf("A : %08X\nB : %08X\nC : %08X\nD : %08X\n\n", a, b, c, d);
+	for (Byte i = 0; i < 32; i++) { key[i] = i; }
 
-	QuarterRound(&a, &b, &c, &d);
+	// 2. Initialisation
+	Chacha20_State myState = initState(key, nonce);
 
-	printf("A : %08X\nB : %08X\nC : %08X\nD : %08X\n", a, b, c, d);
+	// 4. Génération
+	keystreamFactory(&myState, output);
+
+	for (Byte i = 0; i < 64; i++) {printf("%02X ", output[i]);}
+	printf("\n");
 
 	return 0;
 }
