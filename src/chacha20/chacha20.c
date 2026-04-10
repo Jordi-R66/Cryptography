@@ -67,6 +67,8 @@ Chacha20_State initState(const Byte key[32], const Byte nonce[12]) {
 		output.raw[13 + (i >> 2)] = buildInt32LE(&nonce[i]);
 	}
 
+	output.counter = 1;
+
 	return output;
 }
 
