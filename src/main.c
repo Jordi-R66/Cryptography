@@ -5,7 +5,7 @@
 // On définit un tout petit buffer de travail (ex: 16 octets)
 #define CHUNK_SIZE 16
 
-int main() {
+void testChiffrementDechiffrement() {
 	printf("=== Test ChaCha20 : Chiffrement & Dechiffrement par Chunk ===\n\n");
 
 	const Byte key[32] = {
@@ -88,6 +88,59 @@ int main() {
 	decrypted_storage[total_len] = '\0';
 
 	printf("Texte dechiffre :\n%s\n", decrypted_storage);
+}
+
+void testSauvegardeLectureCle() {
+	printf("=== Test ChaCha20 : Sauvegarde & Lecture cle + nonce ===\n\n");
+
+	CC20Key key1 = {
+		.key = {2, 9, 9, 7, 9, 2, 4, 5},
+		.nonce = {8, 667428, 11}
+	};
+
+	for (SizeT i = 0; i < 11; i++) {
+		uint32* tempArr = (uint32*)&key1;
+		printf("%08X ", tempArr[i]);
+	}
+	printf("\n");
+
+	FILE* fp = fopen("chacha20.key", "w");
+
+	exportCC20Key(&key1, fp, true);
+
+	fp = fopen("chacha20.key", "r");
+
+	CC20Key key2 = importCC20Key(fp, true);
+
+	for (SizeT i = 0; i < 11; i++) {
+		uint32* tempArr = (uint32*)&key2;
+		printf("%08X ", tempArr[i]);
+	}
+	printf("\n");
+}
+
+void testGenerationSauvegardeCle() {
+	printf("=== Test ChaCha20 : Generation & Sauvegarde cle + nonce ===\n\n");
+
+	CC20Key key;
+	printf("Generation de la cle\n");
+	CC20KeyGen(&key);
+
+	printf("Cle generee\n");
+	for (SizeT i = 0; i < 11; i++) {
+		uint32* tempArr = (uint32*)&key;
+		printf("%08X ", tempArr[i]);
+	}
+
+	printf("\n");
+
+	FILE* fp = fopen("chacha20.key", "w");
+
+	exportCC20Key(&key, fp, true);
+}
+
+int main() {
+	testGenerationSauvegardeCle();
 
 	return 0;
 }

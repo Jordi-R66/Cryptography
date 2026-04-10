@@ -33,6 +33,15 @@ inline uint32 ROTL32(uint32 a, uint32 n) {
 
 #pragma region Miscs
 
+void CC20KeyGen(CC20Key* key) {
+	FILE* fp = fopen("/dev/urandom", "r");
+
+	if (fp != NULL) {
+		fread(key, CHACHA20_KEY_SIZE, 1, fp);
+		fclose(fp);
+	}
+}
+
 void exportCC20Key(CC20Key* key, FILE* fp, bool closeAfterWriting) {
 	AlgoId algo = (AlgoId)CHACHA20;
 	KeyT keyType = (KeyT)SECRET_KEY;
