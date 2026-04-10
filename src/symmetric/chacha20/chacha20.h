@@ -12,16 +12,22 @@ typedef union Chacha20_State {
 		uint32 nonce[3];
 	};
 	uint32 raw[16];
-} Chacha20_State;
+} Chacha20_State, CC20State;
 
 typedef struct {
 	Chacha20_State state;
 	Byte keystream[64];
 	SizeT keystream_pos;
-} Chacha20_Context, *Chacha20_Context_Ptr;
+} Chacha20_Context, * Chacha20_Context_Ptr, CC20Ctx, *CC20CtxPtr;
+
+typedef struct {
+	uint32 key[8];
+	uint32 nonce[3];
+} Chacha20_Key, CC20Key;
 
 #define CHACHA20_STATE_SIZE sizeof(Chacha20_State)
 #define CHACHA20_CTX_SIZE sizeof(Chacha20_Context)
+#define CHACHA20_KEY_SIZE sizeof(Chacha20_Key)
 
 #pragma endregion
 
@@ -35,11 +41,14 @@ uint32 ROTL32(uint32 a, uint32 n);
 
 #pragma region Miscs
 
-void QuarterRound(uint32* a, uint32* b, uint32* c, uint32* d);
+void exportCC20Key(CC20Key* key, FILE* fp, bool closeAfterWriting);
+CC20Key importCC20Key(FILE* fp, bool closeAfterReading);
 
 #pragma endregion
 
 #pragma region Heart
+
+void QuarterRound(uint32* a, uint32* b, uint32* c, uint32* d);
 
 void initState(const Chacha20_Context_Ptr ctx, const Byte key[32], const Byte nonce[12]);
 

@@ -1,4 +1,5 @@
 #include "chacha20.h"
+#include "constants.h"
 
 #pragma region Tools
 
@@ -32,6 +33,57 @@ inline uint32 ROTL32(uint32 a, uint32 n) {
 
 #pragma region Miscs
 
+void exportCC20Key(CC20Key* key, FILE* fp, bool closeAfterWriting) {
+	AlgoId algo = (AlgoId)CHACHA20;
+	KeyT keyType = (KeyT)SECRET_KEY;
+
+	if (fp != NULL) {
+		fwrite(&algo, sizeof(AlgoId), 1, fp);
+		fwrite(&keyType, sizeof(KeyT), 1, fp);
+
+		fwrite(key, CHACHA20_KEY_SIZE, 1, fp);
+
+		if (closeAfterWriting) {
+			fclose(fp);
+		}
+	}
+}
+
+CC20Key importCC20Key(FILE* fp, bool closeAfterReading) {
+	CC20Key output;
+
+	AlgoId algo;
+	KeyT keyType;
+
+	const SizeT filesize = sizeof(AlgoId) + sizeof(KeyT) + CHACHA20_KEY_SIZE;
+
+	if (fp != NULL) {
+		// Mesure de la taille du fichier
+		fseek(fp, 0, SEEK_END);
+		SizeT size = (SizeT)ftell(fp);
+		fseek(fp, 0, SEEK_SET);
+
+		if (size == filesize) {
+			fread(&algo, sizeof(AlgoId), 1, fp);
+			fread(&keyType, sizeof(KeyT), 1, fp);
+
+			if (algo == CHACHA20 && keyType == SECRET_KEY) {
+				fread(&output, CHACHA20_KEY_SIZE, 1, fp);
+			}
+		}
+
+		if (closeAfterReading) {
+			fclose(fp);
+		}
+	}
+
+	return output;
+}
+
+#pragma endregion
+
+#pragma region Heart
+
 inline void QuarterRound(uint32* a, uint32* b, uint32* c, uint32* d) {
 	*a += *b;
 	*d ^= *a;
@@ -49,10 +101,6 @@ inline void QuarterRound(uint32* a, uint32* b, uint32* c, uint32* d) {
 	*b ^= *c;
 	*b = ROTL32(*b, 7);
 }
-
-#pragma endregion
-
-#pragma region Heart
 
 void initState(const Chacha20_Context_Ptr ctx, const Byte key[32], const Byte nonce[12]) {
 	ctx->state = (Chacha20_State){ .MagicWord = {0x61707865, 0x3320646e, 0x79622d32, 0x6b206574} };
