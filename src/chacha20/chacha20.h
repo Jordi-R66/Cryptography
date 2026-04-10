@@ -14,7 +14,14 @@ typedef union Chacha20_State {
 	uint32 raw[16];
 } Chacha20_State;
 
+typedef struct {
+	Chacha20_State state;
+	Byte keystream[64];
+	uint8 keystream_pos;
+} Chacha20_Context, *Chacha20_Context_Ptr;
+
 #define CHACHA20_STATE_SIZE sizeof(Chacha20_State)
+#define CHACHA20_CTX_SIZE sizeof(Chacha20_Context)
 
 #pragma endregion
 
@@ -34,7 +41,7 @@ void QuarterRound(uint32* a, uint32* b, uint32* c, uint32* d);
 
 #pragma region Heart
 
-Chacha20_State initState(const Byte key[32], const Byte nonce[12]);
+void initState(const Chacha20_Context_Ptr ctx, const Byte key[32], const Byte nonce[12]);
 
 void keystreamFactory(Chacha20_State* previousState, Byte outputBlock[64]);
 
