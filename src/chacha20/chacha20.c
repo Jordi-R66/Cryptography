@@ -95,4 +95,16 @@ void keystreamFactory(Chacha20_State* previousState, Byte outputBlock[64]) {
 	}
 }
 
+void de_cipher(const Chacha20_Context_Ptr ctx, Byte* buffer, SizeT length) {
+	for (SizeT i = 0; i < length; i++) {
+		if (ctx->keystream_pos == 64) {
+			keystreamFactory(&ctx->state, ctx->keystream);
+			ctx->state.counter++;
+			ctx->keystream_pos = 0;
+		}
+
+		buffer[i] ^= ctx->keystream[ctx->keystream_pos++];
+	}
+}
+
 #pragma endregion

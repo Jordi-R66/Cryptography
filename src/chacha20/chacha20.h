@@ -17,7 +17,7 @@ typedef union Chacha20_State {
 typedef struct {
 	Chacha20_State state;
 	Byte keystream[64];
-	uint8 keystream_pos;
+	SizeT keystream_pos;
 } Chacha20_Context, *Chacha20_Context_Ptr;
 
 #define CHACHA20_STATE_SIZE sizeof(Chacha20_State)
@@ -44,5 +44,7 @@ void QuarterRound(uint32* a, uint32* b, uint32* c, uint32* d);
 void initState(const Chacha20_Context_Ptr ctx, const Byte key[32], const Byte nonce[12]);
 
 void keystreamFactory(Chacha20_State* previousState, Byte outputBlock[64]);
+
+void de_cipher(const Chacha20_Context_Ptr ctx, Byte* buffer, SizeT length);
 
 #pragma endregion
