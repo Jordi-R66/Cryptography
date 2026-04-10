@@ -70,6 +70,26 @@ Chacha20_State initState(const Byte key[32], const Byte nonce[12]) {
 	return output;
 }
 
-Chacha20_State keystreamFactory(Chacha20_State previousState);
+void keystreamFactory(Chacha20_State* previousState, Byte outputBlock[64]) {
+	Chacha20_State working_state = *previousState;
+	//Byte tempArr[4] = { 0 };
+
+	for (uint8 i = 0; i < 10; i++) {
+		QuarterRound(&working_state.raw[0], &working_state.raw[4], &working_state.raw[8], &working_state.raw[12]);
+		QuarterRound(&working_state.raw[1], &working_state.raw[5], &working_state.raw[9], &working_state.raw[13]);
+		QuarterRound(&working_state.raw[2], &working_state.raw[6], &working_state.raw[10], &working_state.raw[14]);
+		QuarterRound(&working_state.raw[3], &working_state.raw[7], &working_state.raw[11], &working_state.raw[15]);
+
+		QuarterRound(&working_state.raw[0], &working_state.raw[5], &working_state.raw[10], &working_state.raw[15]);
+		QuarterRound(&working_state.raw[1], &working_state.raw[6], &working_state.raw[11], &working_state.raw[12]);
+		QuarterRound(&working_state.raw[2], &working_state.raw[7], &working_state.raw[8], &working_state.raw[13]);
+		QuarterRound(&working_state.raw[3], &working_state.raw[4], &working_state.raw[9], &working_state.raw[14]);
+	}
+
+	for (uint8 i = 0; i < 16; i++) {
+		working_state.raw[i] += previousState->raw[i];
+		breakInt32LE(working_state.raw[i], &outputBlock[i * 4]);
+	}
+}
 
 #pragma endregion

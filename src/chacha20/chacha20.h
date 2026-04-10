@@ -14,6 +14,8 @@ typedef union Chacha20_State {
 	uint32 raw[16];
 } Chacha20_State;
 
+#define CHACHA20_STATE_SIZE sizeof(Chacha20_State)
+
 #pragma endregion
 
 #pragma region Tools
@@ -34,6 +36,6 @@ void QuarterRound(uint32* a, uint32* b, uint32* c, uint32* d);
 
 Chacha20_State initState(const Byte key[32], const Byte nonce[12]);
 
-Chacha20_State keystreamFactory(Chacha20_State previousState);
+void keystreamFactory(Chacha20_State* previousState, Byte outputBlock[64]);
 
 #pragma endregion
