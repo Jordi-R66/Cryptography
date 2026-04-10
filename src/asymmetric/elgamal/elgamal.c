@@ -151,11 +151,12 @@ void exportEGPublicKey(EGPublicKey* pubkey, FILE* fp, bool closeAfterWriting) {
 
 			fwrite(custInt->value, WORD_SIZE, custInt->size, fp);
 		}
+
+		if (closeAfterWriting) {
+			fclose(fp);
+		}
 	}
 
-	if (closeAfterWriting) {
-		fclose(fp);
-	}
 }
 
 void exportEGPrivateKey(EGPrivateKey* privkey, FILE* fp, bool closeAfterWriting) {
@@ -179,10 +180,10 @@ void exportEGPrivateKey(EGPrivateKey* privkey, FILE* fp, bool closeAfterWriting)
 
 			fwrite(custInt->value, WORD_SIZE, custInt->size, fp);
 		}
-	}
 
-	if (closeAfterWriting) {
-		fclose(fp);
+		if (closeAfterWriting) {
+			fclose(fp);
+		}
 	}
 }
 
