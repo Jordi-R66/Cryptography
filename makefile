@@ -66,8 +66,8 @@ ELGAMAL_OBJ = $(patsubst %.c, $(OBJ_DIR)/%.o, $(ELGAMAL_SRC))
 all: test_main test_crible
 
 # --- Compilation des algorithmes indépendants ---
-chacha20: $(CHACHA20_OBJ)
-elgamal: $(ELGAMAL_OBJ)
+chacha20: $(CHACHA20_OBJ) $(COMMON_OBJS)
+elgamal: $(ELGAMAL_OBJ) $(COMMON_OBJS)
 
 # Règle générique
 $(OBJ_DIR)/%.o: %.c
