@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include "asymmetric/elgamal/elgamal.h"
 #include "symmetric/chacha20/chacha20.h"
 
 // On définit un tout petit buffer de travail (ex: 16 octets)
@@ -139,8 +140,80 @@ void testGenerationSauvegardeCle() {
 	exportCC20Key(&key, fp, true);
 }
 
+/**
+ * Ce test permet de conclure que le couple Clé + Nonce (ChaCha20) chiffré pèse 394 octets, et sa clé temporaire 393 coctets
+ * 
+ */
+void testChiffrementElGamalCleCheChe20() {
+	printf("=== Test ElGamal + ChaCha20 : Generation Cles + nonce + Chiffrement ElGamal Cle + Nonce + Dechiffrement ===\n\n");
+
+	printf("Generation de la paire El Gamal\n");
+	EGKeyPair paireEG = generateEGKeyPair(3072);
+	CC20Key cc20_key;
+
+	printf("Generation de la cle CC20\n");
+	CC20KeyGen(&cc20_key);
+
+	// Traduction de la donnée en CustomInteger
+	// 1. On calcule la taille avec un arrondi supérieur (44/8 = 6 mots)
+    SizeT wordsNeeded = (CHACHA20_KEY_SIZE + WORD_SIZE - 1) / WORD_SIZE;
+    CustomInteger temp = allocInteger(wordsNeeded);
+    
+    // 2. TRES IMPORTANT : On remplit de zéros pour effacer la RAM résiduelle 
+    // dans les 4 derniers octets du 6ème mot qui ne seront pas occupés
+    setMemory(temp.value, 0, temp.capacity * WORD_SIZE); 
+
+    // 3. On copie les 44 octets de la clé
+    copyMemory(&cc20_key, temp.value, CHACHA20_KEY_SIZE);
+    temp.size = temp.capacity;
+
+	printf("Chiffrement de la cle avec El Gamal\n");
+	EGCiphered ciphered_key = cipherData(temp, paireEG.pub);
+
+	FILE* tempKey_fp;
+	FILE* c_fp;
+
+	tempKey_fp = fopen("temp_key.hex", "w");
+	c_fp = fopen("c.hex", "w");
+
+	printf("Ecriture du chiffre et de sa cle temporaire dans des fichiers\n");
+	writeToFile(&ciphered_key.tempKey, tempKey_fp, true);
+	writeToFile(&ciphered_key.c, c_fp, true);
+
+	EGCiphered fromFile;
+
+	tempKey_fp = fopen("temp_key.hex", "r");
+	c_fp = fopen("c.hex", "r");
+
+	printf("Lecture du chiffre et de sa cle temporaire dans des fichiers\n");
+	fromFile.tempKey = readFromFile(tempKey_fp, true);
+	fromFile.c = readFromFile(c_fp, true);
+
+	CustomInteger deciphered = decipherData(fromFile, paireEG);
+
+	CC20Key cle_nonce;
+	copyMemory(deciphered.value, &cle_nonce, CHACHA20_KEY_SIZE);
+
+	uint8* cn = (uint8*)&cle_nonce,
+			*c = (uint8*)&cc20_key;
+
+	printf("Verification d'erreurs\n");
+	for (SizeT i = 0; i < CHACHA20_KEY_SIZE; i++) {
+		printf("[%zu]\t%02X\n", i, cn[i] ^ c[i]);
+	}
+
+	printf("Liberation de la memoire\n");
+	freeInteger(&ciphered_key.c);
+	freeInteger(&ciphered_key.tempKey);
+	freeInteger(&fromFile.c);
+	freeInteger(&fromFile.tempKey);
+	freeEGKeyPair(&paireEG);
+	freeInteger(&temp);
+	freeInteger(&deciphered);
+}
+
 int main() {
-	testGenerationSauvegardeCle();
+	testChiffrementElGamalCleCheChe20();
 
 	return 0;
 }
