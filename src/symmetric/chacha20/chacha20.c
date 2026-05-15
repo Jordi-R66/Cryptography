@@ -42,48 +42,46 @@ void CC20KeyGen(CC20Key* key) {
 	}
 }
 
-void exportCC20Key(CC20Key* key, FILE* fp, bool closeAfterWriting) {
+void exportCC20Key(const CC20Key* key, FILE* fp, bool closeAfterWriting) {
+	if (fp == NULL || key == NULL) return;
+
 	AlgoId algo = (AlgoId)CHACHA20;
 	KeyT keyType = (KeyT)SECRET_KEY;
 
-	if (fp != NULL) {
-		fwrite(&algo, sizeof(AlgoId), 1, fp);
-		fwrite(&keyType, sizeof(KeyT), 1, fp);
+	fwrite(&algo, sizeof(AlgoId), 1, fp);
+	fwrite(&keyType, sizeof(KeyT), 1, fp);
 
-		fwrite(key, CHACHA20_KEY_SIZE, 1, fp);
+	fwrite(key, CHACHA20_KEY_SIZE, 1, fp);
 
-		if (closeAfterWriting) {
-			fclose(fp);
-		}
+	if (closeAfterWriting) {
+		fclose(fp);
 	}
 }
 
 CC20Key importCC20Key(FILE* fp, bool closeAfterReading) {
 	CC20Key output;
-
 	AlgoId algo;
 	KeyT keyType;
+	bool success = false;
 
-	const SizeT filesize = sizeof(AlgoId) + sizeof(KeyT) + CHACHA20_KEY_SIZE;
+	setMemory(&output, 0, CHACHA20_KEY_SIZE);
 
 	if (fp != NULL) {
-		// Mesure de la taille du fichier
-		fseek(fp, 0, SEEK_END);
-		SizeT size = (SizeT)ftell(fp);
-		fseek(fp, 0, SEEK_SET);
-
-		if (size == filesize) {
-			fread(&algo, sizeof(AlgoId), 1, fp);
-			fread(&keyType, sizeof(KeyT), 1, fp);
-
-			if (algo == CHACHA20 && keyType == SECRET_KEY) {
-				fread(&output, CHACHA20_KEY_SIZE, 1, fp);
-			}
-		}
+		do {
+			if (fread(&algo, sizeof(AlgoId), 1, fp) != 1) break;
+			if (fread(&keyType, sizeof(KeyT), 1, fp) != 1) break;
+			if (algo != CHACHA20 || keyType != SECRET_KEY) break;
+			if (fread(&output, CHACHA20_KEY_SIZE, 1, fp) != 1) break;
+			success = true;
+		} while (0);
 
 		if (closeAfterReading) {
 			fclose(fp);
 		}
+	}
+
+	if (!success) {
+		setMemory(&output, 0, CHACHA20_KEY_SIZE);
 	}
 
 	return output;

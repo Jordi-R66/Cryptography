@@ -213,7 +213,8 @@ void testChiffrementElGamalCleCheChe20() {
 }
 
 int main() {
-	testChiffrementElGamalCleCheChe20();
+	//testChiffrementElGamalCleCheChe20();
+	testSauvegardeLectureCle();
 
 	return 0;
 }
