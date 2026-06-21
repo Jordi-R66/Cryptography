@@ -42,6 +42,7 @@ uint32 ROTL32(uint32 a, uint32 n);
 #pragma region Miscs
 
 void CC20KeyGen(CC20Key* key);
+void CC20NonceGen(uint32* nonce, bool print_nonce);
 void exportCC20Key(const CC20Key* key, FILE* fp, bool closeAfterWriting);
 CC20Key importCC20Key(FILE* fp, bool closeAfterReading);
 

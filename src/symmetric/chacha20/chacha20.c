@@ -36,9 +36,28 @@ inline uint32 ROTL32(uint32 a, uint32 n) {
 void CC20KeyGen(CC20Key* key) {
 	FILE* fp = fopen("/dev/urandom", "r");
 
+	setMemory(key, 0, CHACHA20_KEY_SIZE);
+
 	if (fp != NULL) {
-		fread(key, CHACHA20_KEY_SIZE, 1, fp);
+		fread(key->key, sizeof(key->key), 1, fp);
 		fclose(fp);
+	}
+}
+
+void CC20NonceGen(uint32* nonce, bool print_nonce) {
+	FILE* fp = fopen("/dev/urandom", "r");
+
+	setMemory(nonce, 0, 3 * 4);
+
+	if (fp != NULL) {
+		fread(nonce, sizeof(uint32), 3, fp);
+		fclose(fp);
+	}
+
+	if (print_nonce) {
+		for (int i = 0; i < 12; i++) {
+			printf("%02X%c", ((uint8*)nonce)[i], i < 11 ? ' ' : '\n');
+		}
 	}
 }
 

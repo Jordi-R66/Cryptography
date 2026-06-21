@@ -22,7 +22,7 @@ INCLUDES = -Isrc/common -I$(MOCL_DIR)
 CFLAGS_COMMON = -std=c17 -Wall -Wextra -masm=intel -march=native -mtune=native $(INCLUDES)
 
 # Flags spécifiques
-CFLAGS_PROD = $(CFLAGS_COMMON) -O3 -funroll-loops -fomit-frame-pointer
+CFLAGS_PROD = $(CFLAGS_COMMON) -O3 -funroll-loops -fomit-frame-pointer -flto
 CFLAGS_DEBUG = $(CFLAGS_COMMON) -O0 -g -fsanitize=address
 
 # Éditeur de liens
@@ -62,10 +62,14 @@ POLY1305_OBJ = $(patsubst %.c, $(OBJ_DIR)/%.o, $(POLY1305_SRC))
 CC20P1305_OBJ = $(patsubst %.c, $(OBJ_DIR)/%.o, $(CC20P1305_SRC))
 ELGAMAL_OBJ = $(patsubst %.c, $(OBJ_DIR)/%.o, $(ELGAMAL_SRC))
 
+
+APPS_SRCS = src/apps/file_cipher/main.c
+APPS_OBJS = $(patsubst %.c, $(OBJ_DIR)/%.o, $(APPS_SRCS))
+
 # ==========================================
 # Règles principales
 # ==========================================
-.PHONY: all clean poly1305 cc20p1305 chacha20 elgamal test_main test_crible
+.PHONY: all clean poly1305 cc20p1305 chacha20 elgamal test_main test_crible app_file_cipher
 
 # Règle par défaut
 all: test_main test_crible
@@ -91,6 +95,9 @@ test_main: src/main.o $(COMMON_OBJS) $(CHACHA20_OBJ) $(POLY1305_OBJ) $(CC20P1305
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@.out $^ $(LDLIBS)
 
 test_crible: src/crible.o $(COMMON_OBJS)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@.out $^ $(LDLIBS)
+
+app_file_cipher: src/apps/file_cipher/main.o $(COMMON_OBJS) $(CHACHA20_OBJ) $(POLY1305_OBJ) $(CC20P1305_OBJ)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@.out $^ $(LDLIBS)
 
 # ==========================================
