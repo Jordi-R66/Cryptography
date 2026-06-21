@@ -47,6 +47,14 @@ int main(int argc, char** argv) {
 			printf("ChaCha20 key generated and exported!\n");
 		} else if (nonceMode && argc == 3) {
 			CC20NonceGen(nonce, true);
+
+			FILE* fp = fopen(key_path, "w");
+
+			for (int i = 0; i < 12; i++) {
+				fprintf(fp, "%02X%c", ((uint8*)nonce)[i], i < 11 ? ' ' : '\n');
+			}
+
+			fclose(fp);
 		} else if (cipherMode && (argc == 6)) {
 			char* nonce_str = argv[3];
 
