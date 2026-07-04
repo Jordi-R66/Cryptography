@@ -7,8 +7,7 @@
 
 #define BUFFER_SIZE 256
 
-uint32 nonce[3] = { 0 };
-uint8* nonce8 = (uint8*)nonce;
+Byte nonce[12] = { 0 };
 
 void readNonce(char* string) {
 	char temp[3] = { 0 };
@@ -16,7 +15,7 @@ void readNonce(char* string) {
 	for (int i = 0; i < 24; i += 2) {
 		copyMemory(&string[i], &temp[0], 2);
 
-		nonce8[i/2] = (uint8)(strtoul(temp, NULL, 16) & 0xFF);
+		nonce[i/2] = (Byte)(strtoul(temp, NULL, 16) & 0xFF);
 	}
 }
 
@@ -40,7 +39,7 @@ int main(int argc, char** argv) {
 		if (generateKeyMode && (argc == 3)) {
 			CC20Key key = { 0 };
 
-			FILE* fp = fopen(key_path, "w");
+			FILE* fp = fopen(key_path, "wb");
 			CC20KeyGen(&key);
 			exportCC20Key(&key, fp, true);
 
@@ -48,10 +47,10 @@ int main(int argc, char** argv) {
 		} else if (nonceMode && argc == 3) {
 			CC20NonceGen(nonce, true);
 
-			FILE* fp = fopen(key_path, "w");
+			FILE* fp = fopen(key_path, "wb");
 
 			for (int i = 0; i < 12; i++) {
-				fprintf(fp, "%02X%c", ((uint8*)nonce)[i], i < 11 ? ' ' : '\n');
+				fprintf(fp, "%02X%c", nonce[i], i < 11 ? ' ' : '\n');
 			}
 
 			fclose(fp);
@@ -61,21 +60,21 @@ int main(int argc, char** argv) {
 			char* file_in = argv[4];
 			char* file_out = argv[5];
 
-			FILE* fp_key = fopen(key_path, "r");
+			FILE* fp_key = fopen(key_path, "rb");
 
 			CC20Key key = importCC20Key(fp_key, true);
 			readNonce(nonce_str);
 
-			copyMemory(nonce8, key.nonce, 12);
-			setMemory(nonce8, 0, 12);
+			copyMemory(nonce, key.nonce, 12);
+			setMemory(nonce, 0, 12);
 
 			Byte buffer[BUFFER_SIZE] = {0};
 			bool keepReading = true;
 
 			CC20Ctx ctx;
 
-			FILE* fp_in = fopen(file_in, "r");
-			FILE* fp_out = fopen(file_out, "w");
+			FILE* fp_in = fopen(file_in, "rb");
+			FILE* fp_out = fopen(file_out, "wb");
 
 			initState(&ctx, (const Byte*)key.key, (const Byte*)key.nonce);
 			while (keepReading) {

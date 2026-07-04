@@ -91,13 +91,13 @@ $(OBJ_DIR)/%.o: %.c
 # Exécutables de tests (main.c et crible.c)
 # ==========================================
 # CORRECTION CRITIQUE : Ajout de $(POLY1305_OBJ) et $(CC20P1305_OBJ) pour le linker
-test_main: src/main.o $(COMMON_OBJS) $(CHACHA20_OBJ) $(POLY1305_OBJ) $(CC20P1305_OBJ) $(ELGAMAL_OBJ)
+test_main: $(OBJ_DIR)/src/main.o $(COMMON_OBJS) $(CHACHA20_OBJ) $(POLY1305_OBJ) $(CC20P1305_OBJ) $(ELGAMAL_OBJ)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@.out $^ $(LDLIBS)
 
-test_crible: src/crible.o $(COMMON_OBJS)
+test_crible: $(OBJ_DIR)/src/crible.o $(COMMON_OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@.out $^ $(LDLIBS)
 
-app_file_cipher: src/apps/file_cipher/main.o $(COMMON_OBJS) $(CHACHA20_OBJ) $(POLY1305_OBJ) $(CC20P1305_OBJ)
+app_file_cipher: $(APPS_OBJS) $(COMMON_OBJS) $(CHACHA20_OBJ) $(POLY1305_OBJ) $(CC20P1305_OBJ)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@.out $^ $(LDLIBS)
 
 # ==========================================

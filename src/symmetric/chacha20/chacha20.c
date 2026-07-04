@@ -1,3 +1,4 @@
+#include <endian.h>
 #include "chacha20.h"
 #include "constants.h"
 
@@ -14,10 +15,15 @@ inline uint32 buildInt32LE(const Byte bytes[4]) {
 	return output;
 }
 
-inline void breakInt32LE(uint32 a, Byte bytes[4]) {
-	for (uint8 i = 0; i < 4; i++) {
-		bytes[i] = 0xFF & (Byte)(a >> (i * 8));
-	}
+inline void breakInt32LE(uint32 value, Byte output[4]) {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+	copyMemory(&value, output, sizeof(uint32));
+#else
+	output[0] = (Byte)(value);
+	output[1] = (Byte)(value >> 8);
+	output[2] = (Byte)(value >> 16);
+	output[3] = (Byte)(value >> 24);
+#endif
 }
 
 inline uint32 ROTL32(uint32 a, uint32 n) {
@@ -33,47 +39,59 @@ inline uint32 ROTL32(uint32 a, uint32 n) {
 
 #pragma region Miscs
 
-void CC20KeyGen(CC20Key* key) {
-	FILE* fp = fopen("/dev/urandom", "r");
+bool CC20KeyGen(CC20Key* key) {
+	bool success = false;
+	FILE* fp = fopen("/dev/urandom", "rb");
 
 	setMemory(key, 0, CHACHA20_KEY_SIZE);
 
 	if (fp != NULL) {
-		fread(key->key, sizeof(key->key), 1, fp);
+		success = (fread(key->key, sizeof(key->key), 1, fp) == 1);
 		fclose(fp);
 	}
+
+	if (!success) {
+		setMemory(key, 0, CHACHA20_KEY_SIZE);
+	}
+
+	return success;
 }
 
-void CC20NonceGen(uint32* nonce, bool print_nonce) {
-	FILE* fp = fopen("/dev/urandom", "r");
+bool CC20NonceGen(Byte nonce[12], bool print) {
+	bool success = false;
+	FILE* fp = fopen("/dev/urandom", "rb");
 
-	setMemory(nonce, 0, 3 * 4);
+	setMemory(nonce, 0, 12);
 
 	if (fp != NULL) {
-		fread(nonce, sizeof(uint32), 3, fp);
+		success = (fread(nonce, 1, 12, fp) == 12);
 		fclose(fp);
 	}
 
-	if (print_nonce) {
+	if (success && print) {
 		for (int i = 0; i < 12; i++) {
-			printf("%02X%c", ((uint8*)nonce)[i], i < 11 ? ' ' : '\n');
+			printf("%02X", nonce[i]);
 		}
+		printf("\n");
+	} else if (!success) {
+		setMemory(nonce, 0, 12);
 	}
+
+	return success;
 }
 
 void exportCC20Key(const CC20Key* key, FILE* fp, bool closeAfterWriting) {
-	if (fp == NULL || key == NULL) return;
+	if (fp != NULL && key != NULL) {
+		AlgoId algo = CHACHA20;
+		KeyT keyType = SECRET_KEY;
 
-	AlgoId algo = (AlgoId)CHACHA20;
-	KeyT keyType = (KeyT)SECRET_KEY;
+		fwrite(&algo, sizeof(AlgoId), 1, fp);
+		fwrite(&keyType, sizeof(KeyT), 1, fp);
+		fwrite(key, CHACHA20_KEY_SIZE, 1, fp);
 
-	fwrite(&algo, sizeof(AlgoId), 1, fp);
-	fwrite(&keyType, sizeof(KeyT), 1, fp);
-
-	fwrite(key, CHACHA20_KEY_SIZE, 1, fp);
-
-	if (closeAfterWriting) {
-		fclose(fp);
+		if (closeAfterWriting) {
+			fclose(fp);
+		}
 	}
 }
 
@@ -86,13 +104,10 @@ CC20Key importCC20Key(FILE* fp, bool closeAfterReading) {
 	setMemory(&output, 0, CHACHA20_KEY_SIZE);
 
 	if (fp != NULL) {
-		do {
-			if (fread(&algo, sizeof(AlgoId), 1, fp) != 1) break;
-			if (fread(&keyType, sizeof(KeyT), 1, fp) != 1) break;
-			if (algo != CHACHA20 || keyType != SECRET_KEY) break;
-			if (fread(&output, CHACHA20_KEY_SIZE, 1, fp) != 1) break;
-			success = true;
-		} while (0);
+		success = (fread(&algo, sizeof(AlgoId), 1, fp) == 1);
+		success = success && (fread(&keyType, sizeof(KeyT), 1, fp) == 1);
+		success = success && (algo == CHACHA20) && (keyType == SECRET_KEY);
+		success = success && (fread(&output, CHACHA20_KEY_SIZE, 1, fp) == 1);
 
 		if (closeAfterReading) {
 			fclose(fp);
@@ -128,16 +143,14 @@ inline void QuarterRound(uint32* a, uint32* b, uint32* c, uint32* d) {
 	*b = ROTL32(*b, 7);
 }
 
-void initState(const Chacha20_Context_Ptr ctx, const Byte key[32], const Byte nonce[12]) {
+void initState(Chacha20_Context* ctx, const Byte key[32], const Byte nonce[12]) {
 	ctx->state = (Chacha20_State){ .MagicWord = {0x61707865, 0x3320646e, 0x79622d32, 0x6b206574} };
 	ctx->keystream_pos = 64;
 
-	// Key Recomposition
 	for (SizeT i = 0; i < 32; i += 4) {
 		ctx->state.raw[4 + (i >> 2)] = buildInt32LE(&key[i]);
 	}
 
-	// Nonce Recomposition
 	for (SizeT i = 0; i < 12; i += 4) {
 		ctx->state.raw[13 + (i >> 2)] = buildInt32LE(&nonce[i]);
 	}
@@ -149,7 +162,6 @@ void initState(const Chacha20_Context_Ptr ctx, const Byte key[32], const Byte no
 
 void keystreamFactory(Chacha20_State* previousState, Byte outputBlock[64]) {
 	Chacha20_State working_state = *previousState;
-	//Byte tempArr[4] = { 0 };
 
 	for (uint8 i = 0; i < 10; i++) {
 		QuarterRound(&working_state.raw[0], &working_state.raw[4], &working_state.raw[8], &working_state.raw[12]);
@@ -169,7 +181,7 @@ void keystreamFactory(Chacha20_State* previousState, Byte outputBlock[64]) {
 	}
 }
 
-void de_cipher(const Chacha20_Context_Ptr ctx, Byte* buffer, SizeT length) {
+void de_cipher(Chacha20_Context* ctx, Byte* buffer, SizeT length) {
 	for (SizeT i = 0; i < length; i++) {
 		if (ctx->keystream_pos == 64) {
 			keystreamFactory(&ctx->state, ctx->keystream);
