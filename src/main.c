@@ -195,6 +195,16 @@ void testChiffrementElGamalCleCheChe20() {
 		printf("[%zu]\t%02X\n", i, cn[i] ^ c[i]);
 	}
 
+	printf("Sauvegarde des clés\n\n");
+
+	FILE* fp_pub, * fp_priv;
+
+	fp_pub = fopen("elgamal.pub.key", "wb");
+	fp_priv = fopen("elgamal.priv.key", "wb");
+
+	exportEGPublicKey(&paireEG.pub, fp_pub, true);
+	exportEGPrivateKey(&paireEG.priv, fp_priv, true);
+
 	printf("Liberation de la memoire\n\n");
 	freeInteger(&ciphered_key.c);
 	freeInteger(&ciphered_key.tempKey);
@@ -382,8 +392,82 @@ void testLectureEcritureBlocSecurise() {
 	printf("\n");
 }
 
+void testElGamalMultiCipherAndSignature() {
+	printf("=== Test ElGamal : Multi-Cipher & Signature with Hashing ===\n\n");
+
+	bool test_status = false;
+	EGKeyPair pair = generateEGKeyPair(3072);
+
+	const char* messages[3] = {
+		"First block of highly sensitive production data.",
+		"Second chunk containing financial transactions.",
+		"Third partition for backup synchronization tokens."
+	};
+	SizeT msg_count = 3;
+
+	CustomInteger msg_int = allocIntegerFromValue(0, false, true);
+	EGCiphered ciphered = { 0 };
+	CustomInteger deciphered = allocIntegerFromValue(0, false, true);
+	bool cipher_success = true;
+
+	for (SizeT i = 0; i < msg_count; i++) {
+		freeInteger(&msg_int);
+		freeInteger(&ciphered.tempKey);
+		freeInteger(&ciphered.c);
+		freeInteger(&deciphered);
+
+		SizeT words = (strlen(messages[i]) + WORD_SIZE - 1) / WORD_SIZE;
+		msg_int = allocInteger(words);
+		setMemory(msg_int.value, 0, msg_int.capacity * WORD_SIZE);
+		copyMemory((ptr)messages[i], msg_int.value, strlen(messages[i]));
+		msg_int.size = msg_int.capacity;
+
+		ciphered = cipherData(msg_int, pair.pub);
+		deciphered = decipherData(ciphered, pair);
+
+		if (compareAbs(msg_int, deciphered) != EQUALS) {
+			cipher_success = false;
+		}
+	}
+
+	Byte fake_sha256_digest[32] = {
+		0x24, 0x8d, 0x6a, 0x61, 0xd2, 0x06, 0x38, 0xb8,
+		0xe5, 0xc0, 0x26, 0x93, 0x0c, 0x3e, 0x60, 0xbc,
+		0xb2, 0x27, 0x3d, 0x81, 0xd9, 0x07, 0xaf, 0xc8,
+		0x47, 0xa1, 0x42, 0x4b, 0x9b, 0xbe, 0x07, 0x45
+	};
+
+	SizeT hash_words = (32 + WORD_SIZE - 1) / WORD_SIZE;
+	CustomInteger hash_int = allocInteger(hash_words);
+	setMemory(hash_int.value, 0, hash_int.capacity * WORD_SIZE);
+	copyMemory(fake_sha256_digest, hash_int.value, 32);
+	hash_int.size = hash_int.capacity;
+
+	EGSignature signature = signData(hash_int, pair);
+	bool signature_valid = verifySignature(hash_int, signature, pair.pub);
+
+	if (cipher_success && signature_valid) {
+		test_status = true;
+	}
+
+	if (test_status) {
+		printf("-> SUCCESS: All blocks ciphered/deciphered and signature validated.\n\n");
+	} else {
+		printf("-> FAILURE: Integration test issues detected.\n\n");
+	}
+
+	freeInteger(&msg_int);
+	freeInteger(&ciphered.tempKey);
+	freeInteger(&ciphered.c);
+	freeInteger(&deciphered);
+	freeInteger(&hash_int);
+	freeEGSignature(&signature);
+	freeEGKeyPair(&pair);
+}
+
 int main() {
 	//testChiffrementElGamalCleCheChe20();
+	testElGamalMultiCipherAndSignature();
 
 	//printf("--------------------------------------------------\n\n");
 

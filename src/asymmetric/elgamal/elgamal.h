@@ -6,11 +6,11 @@
 #pragma pack()
 
 typedef struct {
-	CustomInteger x, barrettMu_p;
+	CustomInteger x, barrettMu_p, barrettMu_p1;
 } EGPrivateKey;
 
 typedef struct {
-	CustomInteger p, a, q, h, barrettMu_p;
+	CustomInteger p, a, q, h, barrettMu_p, barrettMu_p1;
 } EGPublicKey;
 
 typedef struct {
@@ -22,8 +22,13 @@ typedef struct {
 	CustomInteger tempKey, c;
 } EGCiphered;
 
-#define EG_PUBLIC_KEY_SIZE sizeof(EGPublicKey);
-#define EG_PRIVATE_KEY_SIZE sizeof(EGPrivateKey);
+typedef struct {
+	CustomInteger r, s;
+} EGSignature;
+
+#define EG_PRIVATE_KEY_SIZE sizeof(EGPrivateKey)
+#define EG_PUBLIC_KEY_SIZE sizeof(EGPublicKey)
+#define EG_SIGNATURE_SIZE sizeof(EGSignature)
 #define EG_KEYPAIR_SIZE sizeof(EGKeyPair)
 
 #pragma pack(1)
@@ -33,8 +38,12 @@ EGKeyPair generateEGKeyPair(SizeT bits);
 EGCiphered cipherData(CustomInteger data, EGPublicKey pub);
 CustomInteger decipherData(EGCiphered ciphered, EGKeyPair keyPair);
 
-void freeEGPublicKey(EGPublicKey* pub);
+EGSignature signData(CustomInteger hash, EGKeyPair keyPair);
+bool verifySignature(CustomInteger hash, EGSignature sig, EGPublicKey pub);
+
 void freeEGPrivateKey(EGPrivateKey* priv);
+void freeEGPublicKey(EGPublicKey* pub);
+void freeEGSignature(EGSignature* sig);
 void freeEGKeyPair(EGKeyPair* pair);
 
 void printEGPublicKey(EGPublicKey* pub, Base base);

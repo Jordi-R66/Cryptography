@@ -17,11 +17,20 @@ EGKeyPair generateEGKeyPair(SizeT bits) {
 	q = &pub->q;
 	h = &pub->h;
 
+	CustomInteger p1 = { 0 }, One = allocIntegerFromValue(1, false, true);
+
 	printf("Génération des 2 premiers...\n");
 	generateSafePrimeParallel(bits, 12, q, p);
 	printf("Calcul de mu pour p...\n");
 	pub->barrettMu_p = getBarrettMu(*p);
 	priv->barrettMu_p = copyIntegerToNew(pub->barrettMu_p);
+
+	p1 = subtractInteger(*p, One);
+	pub->barrettMu_p1 = getBarrettMu(p1);
+	priv->barrettMu_p1 = copyIntegerToNew(pub->barrettMu_p1);
+
+	freeInteger(&One);
+	freeInteger(&p1);
 
 	printf("Génération de a...\n");
 	*a = generateRandomInvertible(*p);
@@ -39,16 +48,23 @@ void freeEGPublicKey(EGPublicKey* pub) {
 	freeInteger(&pub->q);
 	freeInteger(&pub->h);
 	freeInteger(&pub->barrettMu_p);
+	freeInteger(&pub->barrettMu_p1);
 }
 
 void freeEGPrivateKey(EGPrivateKey* priv) {
 	freeInteger(&priv->x);
 	freeInteger(&priv->barrettMu_p);
+	freeInteger(&priv->barrettMu_p1);
 }
 
 void freeEGKeyPair(EGKeyPair* pair) {
 	freeEGPublicKey(&pair->pub);
 	freeEGPrivateKey(&pair->priv);
+}
+
+void freeEGSignature(EGSignature* sig) {
+	freeInteger(&sig->r);
+	freeInteger(&sig->s);
 }
 
 #pragma endregion
@@ -98,6 +114,86 @@ CustomInteger decipherData(EGCiphered ciphered, EGKeyPair keyPair) {
 	return m;
 }
 
+EGSignature signData(CustomInteger hash, EGKeyPair keyPair) {
+	EGSignature output = { 0 };
+
+	CustomInteger One = allocIntegerFromValue(1, false, true);
+	CustomInteger p_minus_1 = subtractInteger(keyPair.pub.p, One);
+
+	CustomInteger k = allocIntegerFromValue(0, false, true);
+	CustomInteger gcd_val = allocIntegerFromValue(0, false, true);
+
+	bool k_found = false;
+	while (!k_found) {
+		freeInteger(&k);
+		freeInteger(&gcd_val);
+		k = generateRandomCappedNumber(p_minus_1);
+		gcd_val = gcdInteger(k, p_minus_1);
+		if (equalsInteger(gcd_val, One) && !isZero(k)) {
+			k_found = true;
+		}
+	}
+
+	output.r = modPowInteger(keyPair.pub.a, k, keyPair.pub.p);
+
+	CustomInteger k_inv = modularInverse(k, p_minus_1);
+	CustomInteger xr = multiplyKaratsuba(keyPair.priv.x, output.r);
+	CustomInteger xr_reduced = barrettReduce(xr, p_minus_1, keyPair.priv.barrettMu_p1);
+
+	CustomInteger target = subtractInteger(hash, xr_reduced);
+	if (target.isNegative) {
+		CustomInteger temp_target = addInteger(target, p_minus_1);
+		freeInteger(&target);
+		target = temp_target;
+	}
+
+	CustomInteger factor = multiplyKaratsuba(k_inv, target);
+	output.s = barrettReduce(factor, p_minus_1, keyPair.priv.barrettMu_p1);
+
+	freeInteger(&One);
+	freeInteger(&p_minus_1);
+	freeInteger(&k);
+	freeInteger(&gcd_val);
+	freeInteger(&k_inv);
+	freeInteger(&xr);
+	freeInteger(&xr_reduced);
+	freeInteger(&target);
+	freeInteger(&factor);
+
+	return output;
+}
+
+bool verifySignature(CustomInteger hash, EGSignature sig, EGPublicKey pub) {
+	bool is_valid = false;
+
+	CustomInteger Zero = allocIntegerFromValue(0, false, true);
+
+	if (greaterThanInteger(sig.r, Zero) && lessThanInteger(sig.r, pub.p) &&
+		greaterThanInteger(sig.s, Zero) && lessThanInteger(sig.s, pub.p)) {
+
+		CustomInteger left = modPowInteger(pub.a, hash, pub.p);
+
+		CustomInteger yr = modPowInteger(pub.h, sig.r, pub.p);
+		CustomInteger rs = modPowInteger(sig.r, sig.s, pub.p);
+		CustomInteger right_prod = multiplyKaratsuba(yr, rs);
+		CustomInteger right = barrettReduce(right_prod, pub.p, pub.barrettMu_p);
+
+		if (equalsInteger(left, right)) {
+			is_valid = true;
+		}
+
+		freeInteger(&left);
+		freeInteger(&yr);
+		freeInteger(&rs);
+		freeInteger(&right_prod);
+		freeInteger(&right);
+	}
+
+	freeInteger(&Zero);
+
+	return is_valid;
+}
+
 #pragma region IO
 
 void printEGPublicKey(EGPublicKey* pub, Base base) {
@@ -110,16 +206,20 @@ void printEGPublicKey(EGPublicKey* pub, Base base) {
 	printInteger(pub->q, base, false);
 	printf("h = ");
 	printInteger(pub->h, base, false);
-	printf("mu = ");
+	printf("mu(p) = ");
 	printInteger(pub->barrettMu_p, base, false);
+	printf("mu(p-1) = ");
+	printInteger(pub->barrettMu_p1, base, false);
 }
 
 void printEGPrivateKey(EGPrivateKey* priv, Base base) {
 	printf(" === ELGAMAL PRIVATE KEY === \n");
 	printf("x = ");
 	printInteger(priv->x, base, false);
-	printf("mu = ");
+	printf("mu(p) = ");
 	printInteger(priv->barrettMu_p, base, false);
+	printf("mu(p-1) = ");
+	printInteger(priv->barrettMu_p1, base, false);
 }
 
 void printEGKeyPair(EGKeyPair* pair, Base base) {
@@ -136,7 +236,8 @@ void exportEGPublicKey(EGPublicKey* pubkey, FILE* fp, bool closeAfterWriting) {
 		&pubkey->a,
 		&pubkey->q,
 		&pubkey->h,
-		&pubkey->barrettMu_p
+		&pubkey->barrettMu_p,
+		&pubkey->barrettMu_p1
 	};
 
 	if (fp != NULL) {
@@ -149,6 +250,7 @@ void exportEGPublicKey(EGPublicKey* pubkey, FILE* fp, bool closeAfterWriting) {
 			uint64 sizeInBytes = custInt->size * WORD_SIZE;
 			fwrite(&sizeInBytes, sizeof(uint64), 1, fp);
 
+			printInteger(*custInt, HEX, false);
 			fwrite(custInt->value, WORD_SIZE, custInt->size, fp);
 		}
 
@@ -165,7 +267,8 @@ void exportEGPrivateKey(EGPrivateKey* privkey, FILE* fp, bool closeAfterWriting)
 
 	CustomIntegerPtr ints[] = {
 		&privkey->x,
-		&privkey->barrettMu_p
+		&privkey->barrettMu_p,
+		&privkey->barrettMu_p1
 	};
 
 	if (fp != NULL) {
@@ -197,7 +300,8 @@ EGPublicKey importEGPublicKey(FILE* fp, bool closeAfterReading) {
 		&output.a,
 		&output.q,
 		&output.h,
-		&output.barrettMu_p
+		&output.barrettMu_p,
+		&output.barrettMu_p1
 	};
 
 	if (fp != NULL) {
@@ -236,7 +340,8 @@ EGPrivateKey importEGPrivateKey(FILE* fp, bool closeAfterReading) {
 
 	CustomIntegerPtr ints[] = {
 		&output.x,
-		&output.barrettMu_p
+		&output.barrettMu_p,
+		&output.barrettMu_p1
 	};
 
 	if (fp != NULL) {
