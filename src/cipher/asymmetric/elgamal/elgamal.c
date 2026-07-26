@@ -1,5 +1,4 @@
 #include "elgamal.h"
-#include "constants.h"
 
 #pragma region Generation and Deletion
 

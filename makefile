@@ -45,15 +45,15 @@ COMMON_SRCS = $(MOCL_DIR)/variableSizeInt/customInteger.c \
               $(MOCL_DIR)/strings/customStrings.c \
               $(MOCL_DIR)/memory/memfuncs.c \
               $(MOCL_DIR)/endianness/endianness.c \
-              src/asymmetric/common/utils.c
+              src/cipher/asymmetric/common/utils.c
 
 # ==========================================
 # Algorithmes (Cibles modulaires)
 # ==========================================
-CHACHA20_SRC = src/symmetric/chacha20/chacha20.c
-POLY1305_SRC = src/symmetric/poly1305/poly1305.c
-CC20P1305_SRC = src/symmetric/chacha20poly1305/chacha20poly1305.c
-ELGAMAL_SRC = src/asymmetric/elgamal/elgamal.c
+CHACHA20_SRC = src/cipher/symmetric/chacha20/chacha20.c
+POLY1305_SRC = src/cipher/symmetric/poly1305/poly1305.c
+CC20P1305_SRC = src/cipher/symmetric/chacha20poly1305/chacha20poly1305.c
+ELGAMAL_SRC = src/cipher/asymmetric/elgamal/elgamal.c
 
 # Variables objets déduites
 COMMON_OBJS = $(patsubst %.c, $(OBJ_DIR)/%.o, $(COMMON_SRCS))

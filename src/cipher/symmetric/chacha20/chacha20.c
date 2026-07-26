@@ -1,6 +1,5 @@
 #include <endian.h>
 #include "chacha20.h"
-#include "constants.h"
 
 #pragma region Tools
 

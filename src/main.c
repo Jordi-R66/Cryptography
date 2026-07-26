@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <string.h>
-#include "asymmetric/elgamal/elgamal.h"
-#include "symmetric/chacha20/chacha20.h"
-#include "symmetric/chacha20poly1305/chacha20poly1305.h" // Nouvel import AEAD
+#include "cipher/asymmetric/elgamal/elgamal.h"
+#include "cipher/symmetric/chacha20/chacha20.h"
+#include "cipher/symmetric/chacha20poly1305/chacha20poly1305.h" // Nouvel import AEAD
 
 // On définit un tout petit buffer de travail (ex: 16 octets)
 #define CHUNK_SIZE 16
