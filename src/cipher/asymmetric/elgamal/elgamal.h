@@ -38,8 +38,8 @@ EGKeyPair generateEGKeyPair(SizeT bits);
 EGCiphered cipherData(CustomInteger data, EGPublicKey pub);
 CustomInteger decipherData(EGCiphered ciphered, EGKeyPair keyPair);
 
-EGSignature signData(CustomInteger hash, EGKeyPair keyPair);
-bool verifySignature(CustomInteger hash, EGSignature sig, EGPublicKey pub);
+EGSignature signData(const Byte* data, SizeT len, EGKeyPair keyPair);
+bool verifySignature(const Byte* data, SizeT len, EGSignature sig, EGPublicKey pub);
 
 void freeEGPrivateKey(EGPrivateKey* priv);
 void freeEGPublicKey(EGPublicKey* pub);

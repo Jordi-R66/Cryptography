@@ -1,4 +1,5 @@
 #include "elgamal.h"
+#include "../../../hash/sha256.h"
 
 #pragma region Generation and Deletion
 
@@ -16,25 +17,28 @@ EGKeyPair generateEGKeyPair(SizeT bits) {
 	q = &pub->q;
 	h = &pub->h;
 
-	CustomInteger p1 = { 0 }, One = allocIntegerFromValue(1, false, true);
+	CustomInteger p_minus_1 = { 0 }, One = allocIntegerFromValue(1, false, true);
 
 	printf("Génération des 2 premiers...\n");
 	generateSafePrimeParallel(bits, 12, q, p);
-	printf("Calcul de mu pour p...\n");
+
+	printf("Calcul de mu pour p et p - 1...\n");
 	pub->barrettMu_p = getBarrettMu(*p);
 	priv->barrettMu_p = copyIntegerToNew(pub->barrettMu_p);
 
-	p1 = subtractInteger(*p, One);
-	pub->barrettMu_p1 = getBarrettMu(p1);
+	p_minus_1 = subtractInteger(*p, One);
+	pub->barrettMu_p1 = getBarrettMu(p_minus_1);
 	priv->barrettMu_p1 = copyIntegerToNew(pub->barrettMu_p1);
 
 	freeInteger(&One);
-	freeInteger(&p1);
+	freeInteger(&p_minus_1);
 
 	printf("Génération de a...\n");
 	*a = generateRandomInvertible(*p);
+
 	printf("Génération de x...\n");
 	*x = generateRandomCappedNumber(*q);
+
 	printf("Génération de h...\n");
 	*h = modPowInteger(*a, *x, *p);
 
@@ -113,9 +117,23 @@ CustomInteger decipherData(EGCiphered ciphered, EGKeyPair keyPair) {
 	return m;
 }
 
-EGSignature signData(CustomInteger hash, EGKeyPair keyPair) {
+static CustomInteger hashToCustomInteger(const Byte* data, SizeT len) {
+	Byte digest[32] = { 0 };
+	computeSha256(data, len, digest);
+
+	SizeT hash_words = (32 + WORD_SIZE - 1) / WORD_SIZE;
+	CustomInteger hash = allocInteger(hash_words);
+	setMemory(hash.value, 0, hash.capacity * WORD_SIZE);
+	copyMemory((ptr)digest, hash.value, 32);
+	hash.size = hash.capacity;
+
+	return hash;
+}
+
+EGSignature signData(const Byte* data, SizeT len, EGKeyPair keyPair) {
 	EGSignature output = { 0 };
 
+	CustomInteger hash = hashToCustomInteger(data, len);
 	CustomInteger One = allocIntegerFromValue(1, false, true);
 	CustomInteger p_minus_1 = subtractInteger(keyPair.pub.p, One);
 
@@ -126,8 +144,10 @@ EGSignature signData(CustomInteger hash, EGKeyPair keyPair) {
 	while (!k_found) {
 		freeInteger(&k);
 		freeInteger(&gcd_val);
+
 		k = generateRandomCappedNumber(p_minus_1);
 		gcd_val = gcdInteger(k, p_minus_1);
+
 		if (equalsInteger(gcd_val, One) && !isZero(k)) {
 			k_found = true;
 		}
@@ -144,11 +164,13 @@ EGSignature signData(CustomInteger hash, EGKeyPair keyPair) {
 		CustomInteger temp_target = addInteger(target, p_minus_1);
 		freeInteger(&target);
 		target = temp_target;
+		target.isNegative = false;
 	}
 
 	CustomInteger factor = multiplyKaratsuba(k_inv, target);
 	output.s = barrettReduce(factor, p_minus_1, keyPair.priv.barrettMu_p1);
 
+	freeInteger(&hash);
 	freeInteger(&One);
 	freeInteger(&p_minus_1);
 	freeInteger(&k);
@@ -162,7 +184,7 @@ EGSignature signData(CustomInteger hash, EGKeyPair keyPair) {
 	return output;
 }
 
-bool verifySignature(CustomInteger hash, EGSignature sig, EGPublicKey pub) {
+bool verifySignature(const Byte* data, SizeT len, EGSignature sig, EGPublicKey pub) {
 	bool is_valid = false;
 
 	CustomInteger Zero = allocIntegerFromValue(0, false, true);
@@ -170,6 +192,7 @@ bool verifySignature(CustomInteger hash, EGSignature sig, EGPublicKey pub) {
 	if (greaterThanInteger(sig.r, Zero) && lessThanInteger(sig.r, pub.p) &&
 		greaterThanInteger(sig.s, Zero) && lessThanInteger(sig.s, pub.p)) {
 
+		CustomInteger hash = hashToCustomInteger(data, len);
 		CustomInteger left = modPowInteger(pub.a, hash, pub.p);
 
 		CustomInteger yr = modPowInteger(pub.h, sig.r, pub.p);
@@ -181,6 +204,7 @@ bool verifySignature(CustomInteger hash, EGSignature sig, EGPublicKey pub) {
 			is_valid = true;
 		}
 
+		freeInteger(&hash);
 		freeInteger(&left);
 		freeInteger(&yr);
 		freeInteger(&rs);

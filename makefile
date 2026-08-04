@@ -55,12 +55,16 @@ POLY1305_SRC = src/cipher/symmetric/poly1305/poly1305.c
 CC20P1305_SRC = src/cipher/symmetric/chacha20poly1305/chacha20poly1305.c
 ELGAMAL_SRC = src/cipher/asymmetric/elgamal/elgamal.c
 
+SHA256_SRC = src/hash/sha256.c
+
 # Variables objets déduites
 COMMON_OBJS = $(patsubst %.c, $(OBJ_DIR)/%.o, $(COMMON_SRCS))
 CHACHA20_OBJ = $(patsubst %.c, $(OBJ_DIR)/%.o, $(CHACHA20_SRC))
 POLY1305_OBJ = $(patsubst %.c, $(OBJ_DIR)/%.o, $(POLY1305_SRC))
 CC20P1305_OBJ = $(patsubst %.c, $(OBJ_DIR)/%.o, $(CC20P1305_SRC))
 ELGAMAL_OBJ = $(patsubst %.c, $(OBJ_DIR)/%.o, $(ELGAMAL_SRC))
+
+SHA256_OBJ = $(patsubst %.c, $(OBJ_DIR)/%.o, $(SHA256_SRC))
 
 
 APPS_SRCS = src/apps/file_cipher/main.c
@@ -76,7 +80,7 @@ all: test_main test_crible
 
 # --- Compilation des algorithmes indépendants ---
 chacha20: $(CHACHA20_OBJ) $(COMMON_OBJS)
-elgamal: $(ELGAMAL_OBJ) $(COMMON_OBJS)
+elgamal: $(ELGAMAL_OBJ) $(COMMON_OBJS) $(SHA256_OBJ)
 cc20p1305: $(CC20P1305_OBJ) $(COMMON_OBJS)
 poly1305: $(POLY1305_OBJ) $(COMMON_OBJS)
 
@@ -91,7 +95,7 @@ $(OBJ_DIR)/%.o: %.c
 # Exécutables de tests (main.c et crible.c)
 # ==========================================
 # CORRECTION CRITIQUE : Ajout de $(POLY1305_OBJ) et $(CC20P1305_OBJ) pour le linker
-test_main: $(OBJ_DIR)/src/main.o $(COMMON_OBJS) $(CHACHA20_OBJ) $(POLY1305_OBJ) $(CC20P1305_OBJ) $(ELGAMAL_OBJ)
+test_main: $(OBJ_DIR)/src/main.o $(COMMON_OBJS) $(CHACHA20_OBJ) $(POLY1305_OBJ) $(CC20P1305_OBJ) $(ELGAMAL_OBJ) $(SHA256_OBJ)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@.out $^ $(LDLIBS)
 
 test_crible: $(OBJ_DIR)/src/crible.o $(COMMON_OBJS)

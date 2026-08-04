@@ -430,21 +430,11 @@ void testElGamalMultiCipherAndSignature() {
 		}
 	}
 
-	Byte fake_sha256_digest[32] = {
-		0x24, 0x8d, 0x6a, 0x61, 0xd2, 0x06, 0x38, 0xb8,
-		0xe5, 0xc0, 0x26, 0x93, 0x0c, 0x3e, 0x60, 0xbc,
-		0xb2, 0x27, 0x3d, 0x81, 0xd9, 0x07, 0xaf, 0xc8,
-		0x47, 0xa1, 0x42, 0x4b, 0x9b, 0xbe, 0x07, 0x45
-	};
+	const char* data_to_sign = "Strict authentication payload for firmware integrity validation v1.0.4";
+	SizeT data_len = strlen(data_to_sign);
 
-	SizeT hash_words = (32 + WORD_SIZE - 1) / WORD_SIZE;
-	CustomInteger hash_int = allocInteger(hash_words);
-	setMemory(hash_int.value, 0, hash_int.capacity * WORD_SIZE);
-	copyMemory(fake_sha256_digest, hash_int.value, 32);
-	hash_int.size = hash_int.capacity;
-
-	EGSignature signature = signData(hash_int, pair);
-	bool signature_valid = verifySignature(hash_int, signature, pair.pub);
+	EGSignature signature = signData((const Byte*)data_to_sign, data_len, pair);
+	bool signature_valid = verifySignature((const Byte*)data_to_sign, data_len, signature, pair.pub);
 
 	if (cipher_success && signature_valid) {
 		test_status = true;
@@ -460,7 +450,6 @@ void testElGamalMultiCipherAndSignature() {
 	freeInteger(&ciphered.tempKey);
 	freeInteger(&ciphered.c);
 	freeInteger(&deciphered);
-	freeInteger(&hash_int);
 	freeEGSignature(&signature);
 	freeEGKeyPair(&pair);
 }
