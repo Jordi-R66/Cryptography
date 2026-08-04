@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "hash/sha256.h"
+#include "../../hash/sha256.h"
 
 /**
  * @file hash_file.c

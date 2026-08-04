@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../../symmetric/chacha20/chacha20.h"
-#include "../../symmetric/chacha20poly1305/chacha20poly1305.h"
+#include "../../cipher/symmetric/chacha20/chacha20.h"
+#include "../../cipher/symmetric/chacha20poly1305/chacha20poly1305.h"
 
 #define BUFFER_SIZE 256
 
