@@ -3,28 +3,26 @@ OBJ_DIR = build
 MOCL_DIR ?= libs/myOwnCLib
 MODE ?= prod
 
+MOCL_ABS_PATH = $(abspath $(MOCL_DIR))
+
 INCLUDES = -Isrc/common -I$(MOCL_DIR)
 CFLAGS_COMMON = -std=c17 -Wall -Wextra -masm=intel -march=native -mtune=native $(INCLUDES)
 CFLAGS_PROD = $(CFLAGS_COMMON) -O3 -funroll-loops -fomit-frame-pointer -flto
 CFLAGS_DEBUG = $(CFLAGS_COMMON) -O0 -g -fsanitize=address
-LDLIBS = -lpthread
 
 ifeq ($(MODE), debug)
-    CFLAGS = $(CFLAGS_DEBUG)
-    LDFLAGS = 
-    AR = ar
+	CFLAGS = $(CFLAGS_DEBUG)
+	LDFLAGS = 
+	AR = ar
 else
-    CFLAGS = $(CFLAGS_PROD)
-    LDFLAGS = -flto
-    AR = gcc-ar
+	CFLAGS = $(CFLAGS_PROD)
+	LDFLAGS = -flto
+	AR = gcc-ar
 endif
 
-COMMON_SRCS = $(MOCL_DIR)/variableSizeInt/customInteger.c \
-              $(MOCL_DIR)/strings/customStrings.c \
-              $(MOCL_DIR)/memory/memfuncs.c \
-              $(MOCL_DIR)/endianness/endianness.c \
-              src/cipher/asymmetric/common/utils.c
+LDLIBS = -L$(MOCL_DIR)/build -lmyownclib -lpthread
 
+COMMON_SRCS = src/cipher/asymmetric/common/utils.c
 CHACHA20_SRC = src/cipher/symmetric/chacha20/chacha20.c
 POLY1305_SRC = src/cipher/symmetric/poly1305/poly1305.c
 CC20P1305_SRC = src/cipher/symmetric/chacha20poly1305/chacha20poly1305.c
@@ -47,9 +45,12 @@ APP_HASH_FILE_OBJS = $(patsubst %.c, $(OBJ_DIR)/%.o, $(APP_HASH_FILE_SRCS))
 LIB_OBJS = $(COMMON_OBJS) $(CHACHA20_OBJ) $(POLY1305_OBJ) $(CC20P1305_OBJ) $(ELGAMAL_OBJ) $(SHA256_OBJ)
 TARGET_LIB = $(OBJ_DIR)/libcryptography.a
 
-.PHONY: all clean lib poly1305 cc20p1305 chacha20 elgamal test_main test_crible app_file_cipher app_hash_file
+.PHONY: all clean lib mocl_lib poly1305 cc20p1305 chacha20 elgamal test_main test_crible app_file_cipher app_hash_file
 
-all: lib test_main test_crible
+all: lib mocl_lib test_main test_crible app_file_cipher app_hash_file
+
+mocl_lib:
+	$(MAKE) -C $(MOCL_ABS_PATH) lib MODE=$(MODE)
 
 lib: $(TARGET_LIB)
 
@@ -68,18 +69,19 @@ $(OBJ_DIR)/%.o: %.c
 	@mkdir -p asm/
 	$(CC) $(CFLAGS) -S $< -o asm/$(notdir $(<:.c=.s))
 
-test_main: $(OBJ_DIR)/src/main.o $(LIB_OBJS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@.out $^ $(LDLIBS)
+test_main: $(OBJ_DIR)/src/main.o $(TARGET_LIB) mocl_lib
+	$(CC) $(CFLAGS) $(LDFLAGS) $< $(TARGET_LIB) -o $@.out $(LDLIBS)
 
-test_crible: $(OBJ_DIR)/src/crible.o $(COMMON_OBJS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@.out $^ $(LDLIBS)
+test_crible: $(OBJ_DIR)/src/crible.o $(COMMON_OBJS) mocl_lib
+	$(CC) $(CFLAGS) $(LDFLAGS) $< $(COMMON_OBJS) -o $@.out $(LDLIBS)
 
-app_file_cipher: $(APP_FILE_CIPHER_OBJS) $(LIB_OBJS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@.out $^ $(LDLIBS)
+app_file_cipher: $(APP_FILE_CIPHER_OBJS) $(TARGET_LIB) mocl_lib
+	$(CC) $(CFLAGS) $(LDFLAGS) $< $(TARGET_LIB) -o $@.out $(LDLIBS)
 
-app_hash_file: $(APP_HASH_FILE_OBJS) $(LIB_OBJS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@.out $^ $(LDLIBS)
+app_hash_file: $(APP_HASH_FILE_OBJS) $(TARGET_LIB) mocl_lib
+	$(CC) $(CFLAGS) $(LDFLAGS) $< $(TARGET_LIB) -o $@.out $(LDLIBS)
 
 clean:
 	rm -rf $(OBJ_DIR)/ asm/
 	rm -f *.out
+	$(MAKE) -C $(MOCL_ABS_PATH) clean
