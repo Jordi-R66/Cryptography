@@ -250,7 +250,7 @@ void printEGKeyPair(EGKeyPair* pair, Base base) {
 	printEGPrivateKey(&pair->priv, base);
 }
 
-void exportEGPublicKey(EGPublicKey* pubkey, FILE* fp, bool closeAfterWriting) {
+void exportEGPublicKey(EGPublicKey* pubkey, FILE* fp, bool exportBarrett, bool closeAfterWriting) {
 	AlgoId algo = (AlgoId)EL_GAMAL;
 	KeyT keyType = (KeyT)PUBLIC_KEY;
 
@@ -267,7 +267,13 @@ void exportEGPublicKey(EGPublicKey* pubkey, FILE* fp, bool closeAfterWriting) {
 		fwrite(&algo, sizeof(AlgoId), 1, fp);
 		fwrite(&keyType, sizeof(KeyT), 1, fp);
 
-		for (SizeT i = 0; i < (sizeof(ints) / sizeof(CustomIntegerPtr)); i++) {
+		SizeT max_i = (sizeof(ints) / sizeof(CustomIntegerPtr));
+
+		if (!exportBarrett) {
+			max_i -= 2;
+		}
+
+		for (SizeT i = 0; i < max_i; i++) {
 			CustomIntegerPtr custInt = ints[i];
 
 			uint64 sizeInBytes = custInt->size * WORD_SIZE;
@@ -313,7 +319,7 @@ void exportEGPrivateKey(EGPrivateKey* privkey, FILE* fp, bool closeAfterWriting)
 	}
 }
 
-EGPublicKey importEGPublicKey(FILE* fp, bool closeAfterReading) {
+EGPublicKey importEGPublicKey(FILE* fp, bool importBarrett, bool closeAfterReading) {
 	EGPublicKey output = { 0 };
 
 	AlgoId algo; KeyT keyType;
@@ -332,7 +338,13 @@ EGPublicKey importEGPublicKey(FILE* fp, bool closeAfterReading) {
 		fread(&keyType, sizeof(KeyT), 1, fp);
 
 		if (algo == EL_GAMAL && keyType == PUBLIC_KEY) {
-			for (SizeT i = 0; i < (sizeof(ints) / sizeof(CustomIntegerPtr)); i++) {
+			SizeT max_i = (sizeof(ints) / sizeof(CustomIntegerPtr));
+
+			if (!importBarrett) {
+				max_i -= 2;
+			}
+
+			for (SizeT i = 0; i < max_i; i++) {
 				CustomIntegerPtr custInt = ints[i];
 
 				uint64 sizeInBytes;
@@ -345,6 +357,21 @@ EGPublicKey importEGPublicKey(FILE* fp, bool closeAfterReading) {
 				custInt->size = custInt->capacity;
 
 				custInt->size = (SizeT)fread(custInt->value, WORD_SIZE, sizeInWords, fp);
+			}
+
+			if (!importBarrett) {
+				CustomInteger one, p1;
+
+				one = allocIntegerFromValue(1, false, false);
+
+				p1 = addInteger(output.p, one);
+
+				freeInteger(&one);
+
+				output.barrettMu_p = getBarrettMu(output.p);
+				output.barrettMu_p1 = getBarrettMu(p1);
+
+				freeInteger(&p1);
 			}
 
 			if (closeAfterReading) {

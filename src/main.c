@@ -4,6 +4,8 @@
 #include "cipher/symmetric/chacha20/chacha20.h"
 #include "cipher/symmetric/chacha20poly1305/chacha20poly1305.h" // Nouvel import AEAD
 
+#include <time.h>
+
 // On définit un tout petit buffer de travail (ex: 16 octets)
 #define CHUNK_SIZE 16
 
@@ -145,7 +147,14 @@ void testChiffrementElGamalCleCheChe20() {
 	printf("=== Test ElGamal + ChaCha20 : Generation Cles + nonce + Chiffrement ElGamal Cle + Nonce + Dechiffrement ===\n\n");
 
 	printf("Generation de la paire El Gamal\n");
+	time_t start = time(NULL);
 	EGKeyPair paireEG = generateEGKeyPair(3072);
+	time_t end = time(NULL);
+
+	time_t timespent = end - start;
+
+	printf("Key generated in %ld seconds\n", timespent);
+
 	CC20Key cc20_key;
 
 	printf("Generation de la cle CC20\n");
@@ -166,8 +175,8 @@ void testChiffrementElGamalCleCheChe20() {
 	FILE* tempKey_fp;
 	FILE* c_fp;
 
-	tempKey_fp = fopen("temp_key.hex", "w");
-	c_fp = fopen("c.hex", "w");
+	tempKey_fp = fopen("temp_key.hex", "wb");
+	c_fp = fopen("c.hex", "wb");
 
 	printf("Ecriture du chiffre et de sa cle temporaire dans des fichiers\n");
 	writeToFile(&ciphered_key.tempKey, tempKey_fp, true);
@@ -175,8 +184,8 @@ void testChiffrementElGamalCleCheChe20() {
 
 	EGCiphered fromFile;
 
-	tempKey_fp = fopen("temp_key.hex", "r");
-	c_fp = fopen("c.hex", "r");
+	tempKey_fp = fopen("temp_key.hex", "rb");
+	c_fp = fopen("c.hex", "rb");
 
 	printf("Lecture du chiffre et de sa cle temporaire dans des fichiers\n");
 	fromFile.tempKey = readFromFile(tempKey_fp, true);
@@ -202,7 +211,7 @@ void testChiffrementElGamalCleCheChe20() {
 	fp_pub = fopen("elgamal.pub.key", "wb");
 	fp_priv = fopen("elgamal.priv.key", "wb");
 
-	exportEGPublicKey(&paireEG.pub, fp_pub, true);
+	exportEGPublicKey(&paireEG.pub, fp_pub, false, true);
 	exportEGPrivateKey(&paireEG.priv, fp_priv, true);
 
 	printf("Liberation de la memoire\n\n");
@@ -213,6 +222,25 @@ void testChiffrementElGamalCleCheChe20() {
 	freeEGKeyPair(&paireEG);
 	freeInteger(&temp);
 	freeInteger(&deciphered);
+
+	EGKeyPair paire;
+
+	fp_pub = fopen("elgamal.pub.key", "rb");
+	fp_priv = fopen("elgamal.priv.key", "rb");
+
+	setMemory(&paire, 0, EG_KEYPAIR_SIZE);
+
+	start = time(NULL);
+	paire.pub = importEGPublicKey(fp_pub, false, true);
+	end = time(NULL);
+
+	timespent = end - start;
+
+	printf("Public key imported in %ld seconds\n", timespent);
+
+	paire.priv = importEGPrivateKey(fp_priv, true);
+
+	freeEGKeyPair(&paireEG);
 }
 
 void testChaCha20Poly1305() {
@@ -455,14 +483,14 @@ void testElGamalMultiCipherAndSignature() {
 }
 
 int main() {
-	//testChiffrementElGamalCleCheChe20();
-	testElGamalMultiCipherAndSignature();
+	testChiffrementElGamalCleCheChe20();
+	/*testElGamalMultiCipherAndSignature();
 
 	//printf("--------------------------------------------------\n\n");
 
 	testChaCha20Poly1305();
 	testSauvegardeLectureCle();
-	testLectureEcritureBlocSecurise();
+	testLectureEcritureBlocSecurise();*/
 
 	return 0;
 }
